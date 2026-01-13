@@ -1,3 +1,9 @@
+---
+project: AI Agents & Intelligence
+labels: AI/Data,Bug
+assignee: 
+priority: 2
+---
 # AI Agent Issue Template
 
 Use this template for issues related to AI agents, LangGraph workflows, or banking integration.

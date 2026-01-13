@@ -1,3 +1,8 @@
+---
+project: Bug Report Template
+labels: Bug
+priority: 1
+---
 # Bug Report Template
 
 Use this template when creating bug reports in Linear.

@@ -1,3 +1,8 @@
+---
+project: Product
+labels: Feature
+priority: 3
+---
 # Feature Request Template
 
 Use this template when proposing new features in Linear.

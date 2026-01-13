@@ -85,5 +85,23 @@
     "tw-animate-css": "1.3.3",
     "typescript": "^5",
     "typescript-eslint": "^8.50.0"
-  }
+  },
+  "description": "*Automatically synced with your [v0.app](https://v0.app) deployments*",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santimundi-aideology/majlis_contact_center_v1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/santimundi-aideology/majlis_contact_center_v1/issues"
+  },
+  "homepage": "https://github.com/santimundi-aideology/majlis_contact_center_v1#readme"
 }

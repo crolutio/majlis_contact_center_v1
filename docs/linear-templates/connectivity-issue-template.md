@@ -1,3 +1,9 @@
+---
+project: Channel Connectivity
+labels: Connectivity,Bug
+assignee: acolotto@aideology.ai
+priority: 2
+---
 # Connectivity Issue Template
 
 Use this template for issues related to channel connectivity (Voice, WhatsApp, Email, SMS).

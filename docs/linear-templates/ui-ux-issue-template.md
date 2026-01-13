@@ -1,3 +1,9 @@
+---
+project: User Experience & Interface
+labels: UI/UX,Feature
+assignee: 
+priority: 3
+---
 # UI/UX Issue Template
 
 Use this template for frontend, design, or user experience issues.
