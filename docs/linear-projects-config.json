@@ -1,0 +1,188 @@
+{
+  "projects": [
+    {
+      "name": "Channel Connectivity",
+      "identifier": "CONN",
+      "icon": "🔌",
+      "lead": "Agus",
+      "status": "In Progress",
+      "description": "Voice, WhatsApp, SMS, and Email channel integrations.",
+      "keyAreas": [
+        "Twilio Voice integration",
+        "WhatsApp Business API",
+        "SMS gateway",
+        "Email connectivity (SendGrid)",
+        "Webhook handling",
+        "Message delivery tracking",
+        "Call routing"
+      ],
+      "milestones": [
+        {
+          "name": "Voice Channel Stable",
+          "description": "Incoming and outgoing calls working reliably"
+        },
+        {
+          "name": "WhatsApp Production Ready",
+          "description": "Message sending, receiving, and media support complete"
+        },
+        {
+          "name": "Multi-Channel Unified",
+          "description": "All channels integrated into unified conversation view"
+        }
+      ]
+    },
+    {
+      "name": "AI Agents & Intelligence",
+      "identifier": "AI",
+      "icon": "🤖",
+      "lead": "Brian",
+      "status": "In Progress",
+      "description": "LangGraph workflows, agent processing, and banking integration.",
+      "keyAreas": [
+        "LangGraph workflow development",
+        "Agent intent analysis",
+        "Sentiment detection",
+        "Banking data connectivity",
+        "Knowledge base integration",
+        "AI response generation"
+      ],
+      "milestones": [
+        {
+          "name": "Basic Agent Workflow",
+          "description": "Intent and sentiment analysis working"
+        },
+        {
+          "name": "Banking Integration Complete",
+          "description": "Secure connection to banking database established"
+        },
+        {
+          "name": "Advanced AI Features",
+          "description": "Knowledge base, context awareness, and escalation detection"
+        }
+      ]
+    },
+    {
+      "name": "User Experience & Interface",
+      "identifier": "UX",
+      "icon": "🎨",
+      "lead": "Alex",
+      "coLead": "Judith",
+      "status": "In Progress",
+      "description": "Frontend components, pages, and user experience improvements.",
+      "keyAreas": [
+        "UI component development",
+        "Agent desktop interface",
+        "Analytics dashboards",
+        "Responsive design",
+        "Accessibility improvements",
+        "User testing and feedback"
+      ],
+      "milestones": [
+        {
+          "name": "Core Agent Desktop",
+          "description": "Agent can handle conversations smoothly"
+        },
+        {
+          "name": "Analytics Dashboard",
+          "description": "Key metrics and visualizations working"
+        },
+        {
+          "name": "Mobile Responsive",
+          "description": "All interfaces work well on mobile devices"
+        }
+      ]
+    },
+    {
+      "name": "Platform Infrastructure",
+      "identifier": "INFRA",
+      "icon": "🏗️",
+      "lead": "PM",
+      "status": "Ongoing",
+      "description": "Database, deployment, security, and monitoring.",
+      "keyAreas": [
+        "Supabase database management",
+        "Vercel deployment",
+        "Error handling and logging",
+        "Performance optimization",
+        "Security and compliance",
+        "Monitoring and alerting"
+      ],
+      "milestones": [
+        {
+          "name": "Production Deployment",
+          "description": "Stable production environment on Vercel"
+        },
+        {
+          "name": "Database Optimized",
+          "description": "Queries optimized, indexes in place"
+        },
+        {
+          "name": "Monitoring Active",
+          "description": "Error tracking and performance monitoring configured"
+        }
+      ]
+    },
+    {
+      "name": "Testing & Quality",
+      "identifier": "QA",
+      "icon": "🧪",
+      "lead": "Alex",
+      "coLead": "Judith",
+      "status": "Ongoing",
+      "description": "Testing processes, QA workflows, and bug management.",
+      "keyAreas": [
+        "Integration testing",
+        "UI/UX testing",
+        "Bug triage and fixing",
+        "Regression testing",
+        "Test automation",
+        "Quality metrics"
+      ],
+      "milestones": [
+        {
+          "name": "QA Process Established",
+          "description": "Clear testing workflow and checklist in place"
+        },
+        {
+          "name": "Test Coverage 70%",
+          "description": "Critical paths have automated tests"
+        },
+        {
+          "name": "Zero Critical Bugs",
+          "description": "No critical bugs in production"
+        }
+      ]
+    },
+    {
+      "name": "Documentation & Demos",
+      "identifier": "DOCS",
+      "icon": "📖",
+      "lead": "PM",
+      "status": "Ongoing",
+      "description": "Documentation, demo setup, and client-facing materials.",
+      "keyAreas": [
+        "Setup guides",
+        "API documentation",
+        "Demo configuration",
+        "User manuals",
+        "Technical architecture docs",
+        "Deployment guides"
+      ],
+      "milestones": [
+        {
+          "name": "Setup Docs Complete",
+          "description": "New developers can set up the project easily"
+        },
+        {
+          "name": "Demo Ready",
+          "description": "Public demo is configured and working"
+        },
+        {
+          "name": "API Docs Published",
+          "description": "All API endpoints are documented"
+        }
+      ]
+    }
+  ]
+}
+

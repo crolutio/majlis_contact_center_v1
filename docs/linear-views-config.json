@@ -1,0 +1,195 @@
+{
+  "views": {
+    "projectManager": [
+      {
+        "name": "PM Dashboard",
+        "description": "High-level overview of all workstreams",
+        "type": "all_issues",
+        "filters": {
+          "none": true
+        },
+        "groupBy": "project",
+        "sortBy": ["priority_desc", "updated_desc"],
+        "display": "list",
+        "visibility": "team"
+      },
+      {
+        "name": "Triage Queue",
+        "description": "Daily triage review",
+        "type": "issues",
+        "filters": {
+          "status": ["Triage"]
+        },
+        "groupBy": "none",
+        "sortBy": ["created_asc"],
+        "display": "list",
+        "visibility": "team"
+      },
+      {
+        "name": "Sprint Planning",
+        "description": "Plan upcoming sprint work",
+        "type": "issues",
+        "filters": {
+          "status": ["Backlog", "Todo"],
+          "priority": ["Critical", "High"]
+        },
+        "groupBy": "label_specialty",
+        "sortBy": ["priority_desc"],
+        "display": "list",
+        "visibility": "team"
+      }
+    ],
+    "agus": [
+      {
+        "name": "My Connectivity Work",
+        "description": "Focus on channel integration tasks",
+        "type": "issues",
+        "filters": {
+          "or": [
+            {"assignee": "Agus"},
+            {"label": "🔌 Connectivity"}
+          ]
+        },
+        "groupBy": "status",
+        "sortBy": ["priority_desc", "status"],
+        "display": "board",
+        "visibility": "team"
+      },
+      {
+        "name": "Channel Status Board",
+        "description": "See status across all channels",
+        "type": "issues",
+        "filters": {
+          "label": ["📞 Voice", "💬 WhatsApp", "📧 Email", "📱 SMS"]
+        },
+        "groupBy": "label_channel",
+        "sortBy": ["priority_desc"],
+        "display": "board",
+        "visibility": "team"
+      }
+    ],
+    "alexJudith": [
+      {
+        "name": "Frontend Tasks",
+        "description": "Track UI/UX work",
+        "type": "issues",
+        "filters": {
+          "label": ["🎨 Frontend/UX"]
+        },
+        "groupBy": "status",
+        "sortBy": ["priority_desc"],
+        "display": "board",
+        "visibility": "team"
+      },
+      {
+        "name": "QA & Testing Queue",
+        "description": "Items ready for QA validation",
+        "type": "issues",
+        "filters": {
+          "or": [
+            {"status": ["Testing/QA"]},
+            {"label": ["🧪 Testing"]}
+          ]
+        },
+        "groupBy": "none",
+        "sortBy": ["priority_desc"],
+        "display": "list",
+        "visibility": "team"
+      },
+      {
+        "name": "Component Tracker",
+        "description": "Track work by UI component area",
+        "type": "issues",
+        "filters": {
+          "label": ["🎨 Frontend/UX"]
+        },
+        "groupBy": "label_component",
+        "sortBy": ["priority_desc"],
+        "display": "board",
+        "visibility": "team"
+      }
+    ],
+    "brian": [
+      {
+        "name": "AI Development",
+        "description": "Focus on agent and data work",
+        "type": "issues",
+        "filters": {
+          "label": ["🤖 AI/Data"]
+        },
+        "groupBy": "status",
+        "sortBy": ["priority_desc"],
+        "display": "board",
+        "visibility": "team"
+      },
+      {
+        "name": "Agent & Banking Integration",
+        "description": "Track AI agent and banking connectivity",
+        "type": "issues",
+        "filters": {
+          "and": [
+            {"label": ["🤖 AI/Data"]},
+            {"project": ["AI Agents & Intelligence"]}
+          ]
+        },
+        "groupBy": "priority",
+        "sortBy": ["updated_desc"],
+        "display": "list",
+        "visibility": "team"
+      }
+    ],
+    "shared": [
+      {
+        "name": "Current Sprint",
+        "description": "Team standup view",
+        "type": "issues",
+        "filters": {
+          "cycle": "current"
+        },
+        "groupBy": "assignee",
+        "sortBy": ["status"],
+        "display": "board",
+        "visibility": "team"
+      },
+      {
+        "name": "Blocked Items",
+        "description": "Identify and resolve blockers",
+        "type": "issues",
+        "filters": {
+          "label": ["🚫 Blocked"]
+        },
+        "groupBy": "none",
+        "sortBy": ["priority_desc"],
+        "display": "list",
+        "visibility": "team"
+      },
+      {
+        "name": "This Week",
+        "description": "Weekly team sync",
+        "type": "issues",
+        "filters": {
+          "or": [
+            {"dueDate": "this_week"},
+            {"updated": "last_7_days"}
+          ]
+        },
+        "groupBy": "assignee",
+        "sortBy": ["priority_desc"],
+        "display": "list",
+        "visibility": "team"
+      }
+    ]
+  },
+  "viewCreationInstructions": {
+    "note": "Linear views are created through the UI. Use this config as a reference when setting up views manually.",
+    "steps": [
+      "1. Go to Team → Views → New View",
+      "2. Enter the view name from the config",
+      "3. Set up filters as specified",
+      "4. Configure grouping and sorting",
+      "5. Choose display type (list or board)",
+      "6. Save the view"
+    ]
+  }
+}
+

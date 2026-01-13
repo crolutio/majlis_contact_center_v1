@@ -1,0 +1,137 @@
+{
+  "labels": {
+    "specialty": [
+      {
+        "name": "🔌 Connectivity",
+        "color": "#0091FF",
+        "description": "Agus's work: Twilio, WhatsApp, Voice, SMS integrations"
+      },
+      {
+        "name": "🎨 Frontend/UX",
+        "color": "#8B5CF6",
+        "description": "Alex & Judith's work: UI components, pages, design"
+      },
+      {
+        "name": "🤖 AI/Data",
+        "color": "#10B981",
+        "description": "Brian's work: LangGraph agents, banking integration"
+      },
+      {
+        "name": "📋 Product/PM",
+        "color": "#F59E0B",
+        "description": "PM work: planning, coordination, documentation"
+      }
+    ],
+    "type": [
+      {
+        "name": "🐛 Bug",
+        "color": "#EF4444",
+        "description": "Something broken that needs fixing"
+      },
+      {
+        "name": "✨ Feature",
+        "color": "#3B82F6",
+        "description": "New functionality or enhancement"
+      },
+      {
+        "name": "🔧 Maintenance",
+        "color": "#6B7280",
+        "description": "Tech debt, refactoring, upgrades"
+      },
+      {
+        "name": "📚 Documentation",
+        "color": "#14B8A6",
+        "description": "Docs, guides, README updates"
+      },
+      {
+        "name": "🧪 Testing",
+        "color": "#EC4899",
+        "description": "QA, test coverage, integration tests"
+      }
+    ],
+    "priority": [
+      {
+        "name": "🔴 Critical",
+        "color": "#DC2626",
+        "description": "Production blockers, security issues"
+      },
+      {
+        "name": "🟠 High",
+        "color": "#EA580C",
+        "description": "Important features, significant bugs"
+      },
+      {
+        "name": "🟡 Medium",
+        "color": "#EAB308",
+        "description": "Standard features and improvements"
+      },
+      {
+        "name": "🟢 Low",
+        "color": "#22C55E",
+        "description": "Nice-to-haves, future considerations"
+      }
+    ],
+    "channel": [
+      {
+        "name": "📞 Voice",
+        "color": "#2563EB",
+        "description": "Twilio/Vapi voice calls"
+      },
+      {
+        "name": "💬 WhatsApp",
+        "color": "#16A34A",
+        "description": "WhatsApp integration"
+      },
+      {
+        "name": "📧 Email",
+        "color": "#DC2626",
+        "description": "Email channel"
+      },
+      {
+        "name": "📱 SMS",
+        "color": "#9333EA",
+        "description": "SMS messaging"
+      }
+    ],
+    "component": [
+      {
+        "name": "Agent Desktop",
+        "color": "#0EA5E9",
+        "description": "Agent-facing interfaces"
+      },
+      {
+        "name": "Analytics Dashboard",
+        "color": "#A855F7",
+        "description": "Reports, charts, metrics"
+      },
+      {
+        "name": "Inbox/Conversations",
+        "color": "#10B981",
+        "description": "Message handling UI"
+      },
+      {
+        "name": "Quality Management",
+        "color": "#F97316",
+        "description": "QA evaluation interfaces"
+      },
+      {
+        "name": "Settings/Config",
+        "color": "#64748B",
+        "description": "Configuration pages"
+      }
+    ],
+    "special": [
+      {
+        "name": "🚫 Blocked",
+        "color": "#DC2626",
+        "description": "Work is blocked by dependencies"
+      },
+      {
+        "name": "🎯 Sprint Goal",
+        "color": "#F59E0B",
+        "description": "Critical for current sprint"
+      }
+    ]
+  }
+}
+
