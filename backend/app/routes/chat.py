@@ -16,7 +16,7 @@ class CreateConversationRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     conversation_id: str
-    sender_type: Literal["customer", "agent"]
+    sender_type: str
     sender_customer_id: Optional[str] = None
     sender_agent_id: Optional[str] = None
     content: str = Field(min_length=1)
