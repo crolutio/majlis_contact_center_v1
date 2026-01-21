@@ -132,7 +132,7 @@ async def send_message(body: SendMessageRequest, request: Request):
         )
 
         logger.info(
-            "messages:non_customer stored conversation_id=%s sender_type=%s message_id=%s",
+            "========== [NON-CUSTOMER MESSAGE STORED] ========== conversation_id=%s sender_type=%s message_id=%s",
             body.conversation_id,
             sender_type,
             inserted_message.get("id"),
@@ -150,8 +150,13 @@ async def send_message(body: SendMessageRequest, request: Request):
     }
     try:
         inserted_message = insert_message(incoming_payload)
+        logger.info(
+            "========== [CUSTOMER MESSAGE INSERTED] ========== conversation_id=%s message_id=%s",
+            body.conversation_id,
+            inserted_message.get("id"),
+        )
     except Exception as exc:
-        error_logger.exception("messages:insert_customer error %s", exc)
+        error_logger.exception("========== [CUSTOMER MESSAGE INSERT ERROR] ========== conversation_id=%s error=%s", body.conversation_id, exc)
         raise
 
     # Always update conversation.last_message/updated_at
@@ -166,15 +171,26 @@ async def send_message(body: SendMessageRequest, request: Request):
     try:
         conv = get_conversation(body.conversation_id)
     except Exception as exc:
-        error_logger.exception("messages:load_conversation error %s", exc)
+        error_logger.exception("========== [LOAD CONVERSATION ERROR] ========== conversation_id=%s error=%s", body.conversation_id, exc)
         raise
+    
+    # Log conversation state when first retrieved
+    handling_mode = conv.get("handling_mode")
+    sender_id = body.sender_customer_id if body.sender_customer_id else body.sender_agent_id
+    logger.info(
+        "========== [STAGE 1: CONVERSATION LOADED] ========== conversation_id=%s sender_type=%s sender_id=%s handling_mode=%s",
+        body.conversation_id,
+        sender_type,
+        sender_id,
+        handling_mode,
+    )
+    
     logger.info(
         "messages:history preview=%s",
         str(conv.get("messages") or [])[:500],
     )
 
     # If conversation is already in human-handling mode, do not call AI.
-    handling_mode = conv.get("handling_mode")
     is_human_handling = handling_mode == "human"
 
     # -------------------------
@@ -187,11 +203,13 @@ async def send_message(body: SendMessageRequest, request: Request):
             body.content,
         )
     except Exception as exc:
-        error_logger.exception("messages:routing error %s", exc)
+        error_logger.exception("========== [STAGE 2: ROUTING DECISION ERROR] ========== conversation_id=%s error=%s", body.conversation_id, exc)
         raise
-    should_route_to_human = is_human_handling or needs_human
+
+
+    
     logger.info(
-        "messages:routing conversation_id=%s is_human_handling=%s needs_human=%s reason=%s",
+        "========== [STAGE 2: ROUTING DECISION] ========== conversation_id=%s is_human_handling=%s needs_human=%s reason=%s",
         body.conversation_id,
         is_human_handling,
         needs_human,
@@ -201,7 +219,7 @@ async def send_message(body: SendMessageRequest, request: Request):
     if is_human_handling:
         # Customer message persisted; a human will reply via call-center UI
         logger.info(
-            "messages:human_mode conversation_id=%s customer_message_id=%s",
+            "========== [STAGE 3: ALREADY IN HUMAN MODE] ========== conversation_id=%s customer_message_id=%s",
             body.conversation_id,
             inserted_message.get("id"),
         )
@@ -214,13 +232,34 @@ async def send_message(body: SendMessageRequest, request: Request):
 
     if needs_human:
         # 4a) Mark conversation as handed off
-        update_conversation(
+        logger.info(
+            "========== [STAGE 3: HANDOFF UPDATE - BEFORE] ========== conversation_id=%s from handling_mode=%s to handling_mode=human",
             body.conversation_id,
-            {
-                "handling_mode": "human",
-                "updated_at": now_iso(),
-            },
+            handling_mode,
         )
+        try:
+            update_conversation(
+                body.conversation_id,
+                {
+                    "handling_mode": "human",
+                    "updated_at": now_iso(),
+                },
+            )
+            # Verify the update by fetching the conversation again
+            updated_conv = get_conversation(body.conversation_id)
+            updated_handling_mode = updated_conv.get("handling_mode")
+            logger.info(
+                "========== [STAGE 3: HANDOFF UPDATE - AFTER] ========== conversation_id=%s handling_mode after update=%s",
+                body.conversation_id,
+                updated_handling_mode,
+            )
+        except Exception as exc:
+            error_logger.exception(
+                "========== [STAGE 3: HANDOFF UPDATE - ERROR] ========== conversation_id=%s error=%s",
+                body.conversation_id,
+                exc,
+            )
+            raise
 
         # 4b) Create internal handoff summary for the human agent
         try:
@@ -236,7 +275,7 @@ async def send_message(body: SendMessageRequest, request: Request):
                 }
             )
         except Exception as exc:
-            error_logger.exception("messages:handoff_summary error %s", exc)
+            error_logger.exception("========== [STAGE 3: HANDOFF SUMMARY ERROR] ========== conversation_id=%s error=%s", body.conversation_id, exc)
             raise
 
         # 4c) Optionally send a customer-visible message acknowledging handoff
@@ -252,11 +291,11 @@ async def send_message(body: SendMessageRequest, request: Request):
                 }
             )
         except Exception as exc:
-            error_logger.exception("messages:handoff_ack error %s", exc)
+            error_logger.exception("========== [STAGE 3: HANDOFF ACK ERROR] ========== conversation_id=%s error=%s", body.conversation_id, exc)
             raise
 
         logger.info(
-            "messages:handoff conversation_id=%s customer_message_id=%s",
+            "========== [STAGE 4: HANDOFF COMPLETE] ========== conversation_id=%s customer_message_id=%s",
             body.conversation_id,
             inserted_message.get("id"),
         )
@@ -299,7 +338,7 @@ async def send_message(body: SendMessageRequest, request: Request):
     )
 
     logger.info(
-        "messages:ai conversation_id=%s customer_message_id=%s ai_message_id=%s ai_reply=%s",
+        "========== [STAGE 4: AI RESPONSE COMPLETE] ========== conversation_id=%s customer_message_id=%s ai_message_id=%s ai_reply=%s",
         body.conversation_id,
         inserted_message.get("id"),
         ai_msg.get("id"),

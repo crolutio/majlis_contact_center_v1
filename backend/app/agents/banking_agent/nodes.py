@@ -109,22 +109,29 @@ class BankingNode:
         )
         if tool_calls:
             for idx, tool_call in enumerate(tool_calls, 1):
+                # Truncate args if they're too long
+                args = tool_call.get("args", {})
+                args_str = json.dumps(args) if isinstance(args, dict) else str(args)
+                args_preview = args_str[:500] if len(args_str) > 500 else args_str
                 logger.info(
                     "banking_node:answer tool_call_%s name=%s args=%s",
                     idx,
                     tool_call.get("name"),
-                    tool_call.get("args"),
+                    args_preview,
                 )
 
         tool_messages = [
             msg for msg in state.get("messages", []) if isinstance(msg, ToolMessage)
         ]
         for idx, tool_msg in enumerate(tool_messages, 1):
+            # Convert content to string and truncate to 500 chars
+            content_str = str(tool_msg.content) if tool_msg.content else ""
+            content_preview = content_str[:500] if len(content_str) > 500 else content_str
             logger.info(
                 "banking_node:answer tool_response_%s name=%s preview=%s",
                 idx,
                 getattr(tool_msg, "name", ""),
-                (tool_msg.content or "")[:500],
+                content_preview,
             )
 
         # Preserve tool_calls and other metadata on the response message.
