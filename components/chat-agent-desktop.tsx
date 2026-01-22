@@ -525,7 +525,7 @@ export function ChatAgentDesktop({
                   animate={{ opacity: 1, y: 0 }}
                   className={cn(
                     "flex",
-                    msg.sender === "agent" || msg.sender === "whisper" || msg.sender === "ai"
+                    msg.sender === "customer"
                       ? "justify-start"
                       : msg.sender === "system"
                         ? "justify-center"
