@@ -24,27 +24,9 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
         setIsLoading(true);
         setError(null);
 
-        // Fetch conversations from cc_conversations table
-        const { data: convs, error: fetchError } = await supabase
-          .from('cc_conversations')
-          .select(`
-            id,
-            channel,
-            status,
-            opened_at,
-            closed_at,
-            priority,
-            topic,
-            sentiment,
-            bank_customer_id,
-            cc_messages (
-              id,
-              created_at,
-              body_text
-            )
-          `)
-          .in('status', ['active', 'waiting'])
-          .order('opened_at', { ascending: false });
+        // Use RPC function to get conversations with customers (workaround for schema cache issue)
+        const { data: convsWithCustomers, error: fetchError } = await supabase
+          .rpc('get_conversations_with_customers');
 
         if (fetchError) {
           console.error('Error fetching conversations:', fetchError);
@@ -52,21 +34,29 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
           return;
         }
 
-        // Fetch customers for conversations with bank_customer_id
-        const customerIds = convs
-          .filter((c: any) => c.bank_customer_id)
-          .map((c: any) => c.bank_customer_id);
-        
-        const { data: customers } = await supabase
-          .from('cc_customers')
-          .select('id, name, email, phone')
-          .in('id', customerIds);
+        // Fetch messages for each conversation
+        const convIds = convsWithCustomers.map((c: any) => c.id);
+        const { data: allMessages } = await supabase
+          .from('cc_messages')
+          .select('id, conversation_id, created_at, body_text')
+          .in('conversation_id', convIds);
 
-        const customerMap = new Map(customers?.map(c => [c.id, c]) || []);
+        // Group messages by conversation
+        const messagesByConv = new Map();
+        allMessages?.forEach((msg: any) => {
+          if (!messagesByConv.has(msg.conversation_id)) {
+            messagesByConv.set(msg.conversation_id, []);
+          }
+          messagesByConv.get(msg.conversation_id).push(msg);
+        });
+
+        const convs = convsWithCustomers.map((c: any) => ({
+          ...c,
+          cc_messages: messagesByConv.get(c.id) || []
+        }));
 
         // Transform to Conversation format with ChatInbox expected fields
         const transformedConversations: any[] = convs.map((conv: any) => {
-          const customer = conv.bank_customer_id ? customerMap.get(conv.bank_customer_id) : null;
           const messages = conv.cc_messages || [];
           const lastMessage = messages.length > 0
             ? messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
@@ -75,15 +65,15 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
           // Calculate time in queue (minutes since opened)
           const timeInQueue = Math.floor((Date.now() - new Date(conv.opened_at).getTime()) / (1000 * 60));
 
-          const customerName = customer?.name || 'Unknown Customer';
+          const customerName = conv.customer_name || 'Unknown Customer';
 
           return {
             id: conv.id,
             customer: {
-              id: customer?.id || conv.id,
+              id: conv.customer_id || conv.id,
               name: customerName,
-              email: customer?.email || '',
-              phone: customer?.phone || '',
+              email: conv.customer_email || '',
+              phone: conv.customer_phone || '',
               avatar: '/placeholder-user.jpg',
               language: 'English',
               preferredLanguage: 'en',
