@@ -431,47 +431,55 @@ export async function getAllConversations(industry?: string): Promise<Conversati
 
   if (error || !data) return [];
 
-  return data.map((conv: any) => ({
-    id: conv.id,
-    customer: {
-      id: conv.customer?.id || '',
-      name: conv.customer?.name || 'Unknown',
-      email: conv.customer?.email || '',
-      phone: conv.customer?.phone || '',
-      avatar: conv.customer?.avatar || '/placeholder-user.jpg',
-      language: conv.customer?.language || 'English',
-      preferredLanguage: conv.customer?.preferred_language || 'en',
-      tier: conv.customer?.tier || 'standard',
-    },
-    channel: conv.channel,
-    status: conv.status,
-    priority: conv.priority,
-    sentiment: conv.sentiment,
-    sentimentScore: conv.sentiment_score,
-    sla: {
-      deadline: conv.sla_deadline ? new Date(conv.sla_deadline) : new Date(),
-      remaining: conv.sla_remaining || 0,
-      status: conv.sla_status,
-    },
-    assignedTo: conv.assigned_to || null,
-    queue: conv.queue || 'General Support',
-    topic: conv.topic || '',
-    lastMessage: conv.last_message || '',
-    lastMessageTime: new Date(conv.last_message_time),
-    startTime: new Date(conv.start_time),
-    messages: (conv.messages || []).map((msg: any) => ({
-      id: msg.id,
-      type: msg.type,
-      content: msg.content,
-      timestamp: new Date(msg.timestamp),
-      sentiment: msg.sentiment || undefined,
-      confidence: msg.confidence || undefined,
-      isTranscript: msg.is_transcript || false,
-    })),
-    aiConfidence: conv.ai_confidence,
-    escalationRisk: conv.escalation_risk,
-    tags: conv.tags || [],
-  }));
+  return data.map((conv: any) => {
+    const customerName =
+      conv.customer?.name ||
+      conv.customer?.email ||
+      conv.customer?.phone ||
+      'Unknown';
+
+    return {
+      id: conv.id,
+      customer: {
+        id: conv.customer?.id || '',
+        name: customerName,
+        email: conv.customer?.email || '',
+        phone: conv.customer?.phone || '',
+        avatar: conv.customer?.avatar || '/placeholder-user.jpg',
+        language: conv.customer?.language || 'English',
+        preferredLanguage: conv.customer?.preferred_language || 'en',
+        tier: conv.customer?.tier || 'standard',
+      },
+      channel: conv.channel,
+      status: conv.status,
+      priority: conv.priority,
+      sentiment: conv.sentiment,
+      sentimentScore: conv.sentiment_score,
+      sla: {
+        deadline: conv.sla_deadline ? new Date(conv.sla_deadline) : new Date(),
+        remaining: conv.sla_remaining || 0,
+        status: conv.sla_status,
+      },
+      assignedTo: conv.assigned_to || null,
+      queue: conv.queue || 'General Support',
+      topic: conv.topic || '',
+      lastMessage: conv.last_message || '',
+      lastMessageTime: new Date(conv.last_message_time),
+      startTime: new Date(conv.start_time),
+      messages: (conv.messages || []).map((msg: any) => ({
+        id: msg.id,
+        type: msg.type,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        sentiment: msg.sentiment || undefined,
+        confidence: msg.confidence || undefined,
+        isTranscript: msg.is_transcript || false,
+      })),
+      aiConfidence: conv.ai_confidence,
+      escalationRisk: conv.escalation_risk,
+      tags: conv.tags || [],
+    };
+  });
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {

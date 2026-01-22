@@ -13,6 +13,15 @@ import { useAuth, type UserRole } from "@/contexts/auth-context"
 import { Shield, BarChart3, Users, Loader2, PhoneCall, Headphones, Monitor } from "lucide-react"
 import { MajlisConnectLogo } from "@/components/brand/majlis-connect-logo"
 
+const roleLabels: Record<UserRole, string> = {
+  agent: "Agent",
+  call_agent: "Call Agent",
+  supervisor: "Supervisor",
+  admin: "Admin",
+  analyst: "Analyst",
+  back_office: "Back Office",
+}
+
 const roleInfo: Record<UserRole, { icon: React.ElementType; description: string }> = {
   agent: {
     icon: Headphones,
@@ -179,10 +188,10 @@ export default function LoginPage() {
                         <RadioGroupItem value={role} id={role} className="peer sr-only" />
                         <Label
                           htmlFor={role}
-                          className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-colors"
+                          className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-colors min-h-[117px]"
                         >
                           <Icon className="mb-1.5 h-5 w-5" />
-                          <span className="text-sm font-medium capitalize">{role}</span>
+                          <span className="text-sm font-medium">{roleLabels[role]}</span>
                           <span className="text-[10px] text-muted-foreground text-center mt-0.5 leading-tight">
                             {description}
                           </span>

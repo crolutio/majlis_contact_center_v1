@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -61,7 +61,7 @@ export default function OutboundJobDetailPage() {
   const router = useRouter()
   const { user } = useAuth()
   const role = user?.role
-  const params = useParams<{ id: string }>()
+  const params = React.use(useParams<{ id: string }>())
   const id = params?.id
 
   const [data, setData] = useState<JobDetail | null>(null)

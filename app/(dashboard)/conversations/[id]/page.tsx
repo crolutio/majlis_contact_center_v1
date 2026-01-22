@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -58,8 +58,8 @@ async function apiGet<T>(path: string, role: string | undefined): Promise<T> {
 
 export default function ConversationDetailPage() {
   const router = useRouter()
-  const params = useParams<{ id: string }>()
-  const searchParams = useSearchParams()
+  const params = React.use(useParams<{ id: string }>())
+  const searchParams = React.use(useSearchParams())
   const { user } = useAuth()
   const role = user?.role
   const conversationId = params?.id
