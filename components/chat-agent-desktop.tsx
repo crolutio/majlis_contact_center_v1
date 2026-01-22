@@ -54,7 +54,8 @@ export function ChatAgentDesktop({
   onAutoAcceptToggle,
 }: ChatAgentDesktopProps) {
   const { user } = useAuth()
-  const agentId = user?.id || ""
+  // Default to demo agent ID if not authenticated
+  const agentId = user?.id || "e66fa391-28b5-44ec-b3a9-4397c2f2d225"
 
   // Use UUID strings for conversation IDs
   const [activeConversationId, setActiveConversationId] = useState<string>("")
@@ -132,14 +133,10 @@ export function ChatAgentDesktop({
     }
   }
 
-  const isHumanHandling = activeConvo?.handlingMode === "human"
-  const displayDbMessages = isHumanHandling ? dbMessages : []
-  const displayFallbackMessages = isHumanHandling ? (activeConvo?.messages || []) : []
-
-  // Use realtime messages if available, otherwise use loaded messages
-  const messages = displayDbMessages.length > 0
-    ? displayDbMessages.map(convertDbMessageToDisplay)
-    : displayFallbackMessages
+  // Use realtime messages if available, otherwise use loaded messages from conversation
+  const messages = dbMessages.length > 0
+    ? dbMessages.map(convertDbMessageToDisplay)
+    : (activeConvo?.messages || [])
 
   const [message, setMessage] = useState("")
   const [whisperMode, setWhisperMode] = useState(false)

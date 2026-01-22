@@ -10,17 +10,14 @@ interface UseAgentInboxReturn {
   error: string | null;
 }
 
-export function useAgentInbox(agentId: string): UseAgentInboxReturn {
+export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!agentId) {
-      setConversations([]);
-      setIsLoading(false);
-      return;
-    }
+    // Allow fetching conversations even without specific agent ID (for demo/development)
+    // In production, you'd want to ensure agentId is present
 
     const fetchConversations = async () => {
       try {
