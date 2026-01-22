@@ -239,10 +239,10 @@ export async function getConversationMessages(conversationId: string): Promise<D
     const dbMessages: DbMessage[] = messages.map(msg => ({
       id: msg.id,
       conversation_id: msg.conversation_id,
-      sender_type: msg.type === 'customer' ? 'customer' : 'agent', // Use type field directly
+      sender_type: msg.sender_type as 'customer' | 'agent' | 'ai' | 'system', // Use sender_type from database
       content: msg.content || '',
       created_at: msg.created_at,
-      is_internal: false, // Default to false
+      is_internal: msg.is_internal || false,
       metadata: {},
     }));
 
@@ -264,9 +264,9 @@ export async function sendMessage(
       .from('messages')
       .insert({
         conversation_id: conversationId,
-        type: senderType,
+        sender_type: senderType,
         content: content,
-        timestamp: new Date().toISOString(),
+        is_internal: isInternal,
       })
       .select()
       .single();
