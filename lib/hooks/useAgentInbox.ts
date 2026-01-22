@@ -24,6 +24,8 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
         setIsLoading(true);
         setError(null);
 
+        console.log('[useAgentInbox] Fetching conversations...');
+
         // Get conversations with customer data
         const { data: convsWithCustomers, error: fetchError } = await supabase
           .from('conversations')
@@ -32,9 +34,21 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
             customer:customers(*)
           `);
 
+        console.log('[useAgentInbox] Response:', { 
+          data: convsWithCustomers, 
+          error: fetchError,
+          count: convsWithCustomers?.length 
+        });
+
         if (fetchError) {
-          console.error('Error fetching conversations:', fetchError);
-          setError('Failed to load conversations');
+          console.error('[useAgentInbox] Error fetching conversations:', fetchError);
+          setError(`Failed to load conversations: ${fetchError.message}`);
+          return;
+        }
+
+        if (!convsWithCustomers || convsWithCustomers.length === 0) {
+          console.log('[useAgentInbox] No conversations found');
+          setConversations([]);
           return;
         }
 
@@ -111,10 +125,11 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
           };
         });
 
+        console.log('[useAgentInbox] Transformed conversations:', transformedConversations.length);
         setConversations(transformedConversations);
       } catch (err) {
-        console.error('Error in fetchConversations:', err);
-        setError('Failed to load conversations');
+        console.error('[useAgentInbox] Error in fetchConversations:', err);
+        setError(`Failed to load conversations: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         setIsLoading(false);
       }
@@ -130,7 +145,7 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
         {
           event: '*',
           schema: 'public',
-          table: 'cc_conversations',
+          table: 'conversations',
         },
         () => {
           // Refetch conversations when there are changes
