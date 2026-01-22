@@ -24,10 +24,13 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
         setIsLoading(true);
         setError(null);
 
-        // Use view to get conversations with customers (workaround for schema cache issue)
+        // Get conversations with customer data
         const { data: convsWithCustomers, error: fetchError } = await supabase
-          .from('conversations_with_customers')
-          .select('*');
+          .from('conversations')
+          .select(`
+            *,
+            customer:customers(*)
+          `);
 
         if (fetchError) {
           console.error('Error fetching conversations:', fetchError);
@@ -38,8 +41,8 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
         // Fetch messages for each conversation
         const convIds = convsWithCustomers.map((c: any) => c.id);
         const { data: allMessages } = await supabase
-          .from('cc_messages')
-          .select('id, conversation_id, created_at, body_text')
+          .from('messages')
+          .select('id, conversation_id, created_at, content')
           .in('conversation_id', convIds);
 
         // Group messages by conversation
@@ -51,34 +54,30 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
           messagesByConv.get(msg.conversation_id).push(msg);
         });
 
-        const convs = convsWithCustomers.map((c: any) => ({
-          ...c,
-          cc_messages: messagesByConv.get(c.id) || []
-        }));
-
         // Transform to Conversation format with ChatInbox expected fields
-        const transformedConversations: any[] = convs.map((conv: any) => {
-          const messages = conv.cc_messages || [];
+        const transformedConversations: any[] = convsWithCustomers.map((conv: any) => {
+          const messages = messagesByConv.get(conv.id) || [];
           const lastMessage = messages.length > 0
             ? messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
             : null;
 
-          // Calculate time in queue (minutes since opened)
-          const timeInQueue = Math.floor((Date.now() - new Date(conv.opened_at).getTime()) / (1000 * 60));
+          // Calculate time in queue (minutes since start_time)
+          const timeInQueue = Math.floor((Date.now() - new Date(conv.start_time).getTime()) / (1000 * 60));
 
-          const customerName = conv.customer_name || 'Unknown Customer';
+          const customer = conv.customer || {};
+          const customerName = customer.name || customer.email || 'Unknown Customer';
 
           return {
             id: conv.id,
             customer: {
-              id: conv.customer_id || conv.id,
+              id: customer.id || conv.customer_id || conv.id,
               name: customerName,
-              email: conv.customer_email || '',
-              phone: conv.customer_phone || '',
-              avatar: '/placeholder-user.jpg',
-              language: 'English',
-              preferredLanguage: 'en',
-              tier: 'standard',
+              email: customer.email || '',
+              phone: customer.phone || '',
+              avatar: customer.avatar_url || '/placeholder-user.jpg',
+              language: customer.preferred_language || 'English',
+              preferredLanguage: customer.preferred_language || 'en',
+              tier: customer.tier || 'standard',
             },
             // Additional fields expected by ChatInbox
             customerName,
@@ -89,20 +88,20 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
             sentiment: conv.sentiment || 'neutral',
             sentimentScore: 0.5,
             sla: {
-              deadline: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
-              remaining: 30 * 60 * 1000,
-              status: 'healthy',
+              deadline: conv.sla_deadline ? new Date(conv.sla_deadline) : new Date(Date.now() + 30 * 60 * 1000),
+              remaining: conv.sla_remaining || 30 * 60 * 1000,
+              status: conv.sla_status || 'healthy',
             },
-            assignedTo: conv.assigned_agent_id || null,
-            queue: conv.assigned_queue || 'general',
+            assignedTo: conv.assigned_to || null,
+            queue: conv.queue || 'general',
             topic: conv.topic || '',
-            lastMessage: lastMessage?.body_text || '',
-            lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(conv.opened_at),
-            startTime: new Date(conv.opened_at),
+            lastMessage: lastMessage?.content || conv.last_message || '',
+            lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(conv.last_message_time || conv.start_time),
+            startTime: new Date(conv.start_time),
             messages: messages.map((msg: any) => ({
               id: msg.id,
               type: 'customer', // Default, would need more logic
-              content: msg.body_text || '',
+              content: msg.content || '',
               timestamp: new Date(msg.created_at),
             })),
             aiConfidence: 0.8,
