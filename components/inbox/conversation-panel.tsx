@@ -73,6 +73,8 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
   const { messages: dbMessages, send: sendMessage } = useConversationMessages({
     conversationId: conversation?.id ?? null,
     agentId,
+    source: conversation?.metadata?.source === 'banking' ? 'banking' : 'default',
+    channel: conversation?.channel,
   })
 
   // Convert DbMessage to Message format for rendering

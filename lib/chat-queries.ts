@@ -221,8 +221,34 @@ export async function getConversationDetails(conversationId: string): Promise<Co
   }
 }
 
-export async function getConversationMessages(conversationId: string): Promise<DbMessage[]> {
+export async function getConversationMessages(
+  conversationId: string,
+  source: 'banking' | 'default' = 'default'
+): Promise<DbMessage[]> {
   try {
+    if (source === 'banking') {
+      const { data: messages, error } = await supabase
+        .from('cc_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching banking messages:', error);
+        return [];
+      }
+
+      return (messages || []).map((msg: any) => ({
+        id: msg.id,
+        conversation_id: msg.conversation_id,
+        sender_type: msg.direction === 'inbound' ? 'customer' : 'agent',
+        content: msg.body_text || msg.text || '',
+        created_at: msg.created_at,
+        is_internal: msg.body_json?.is_internal || msg.metadata?.is_internal || false,
+        metadata: msg.body_json || msg.metadata || {},
+      }));
+    }
+
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
@@ -236,14 +262,14 @@ export async function getConversationMessages(conversationId: string): Promise<D
     }
 
     // Transform messages to DbMessage format
-    const dbMessages: DbMessage[] = messages.map(msg => ({
+    const dbMessages: DbMessage[] = (messages || []).map((msg: any) => ({
       id: msg.id,
       conversation_id: msg.conversation_id,
       sender_type: msg.sender_type as 'customer' | 'agent' | 'ai' | 'system', // Use sender_type from database
       content: msg.content || '',
       created_at: msg.created_at,
       is_internal: msg.is_internal || false,
-      metadata: {},
+      metadata: msg.metadata || {},
     }));
 
     return dbMessages;
@@ -257,9 +283,50 @@ export async function sendMessage(
   conversationId: string,
   content: string,
   senderType: 'customer' | 'agent' | 'ai' | 'system' = 'agent',
-  isInternal: boolean = false
+  isInternal: boolean = false,
+  options?: {
+    source?: 'banking' | 'default';
+    channel?: 'voice' | 'chat' | 'email' | 'whatsapp' | 'sms';
+  }
 ): Promise<DbMessage | null> {
   try {
+    const source = options?.source || 'default';
+
+    if (source === 'banking') {
+      const channel = options?.channel || 'chat';
+      const { data: message, error } = await supabase
+        .from('cc_messages')
+        .insert({
+          conversation_id: conversationId,
+          direction: senderType === 'customer' ? 'inbound' : 'outbound',
+          channel,
+          body_text: content,
+          status: 'sent',
+          body_json: {
+            sender_type: senderType,
+            is_internal: isInternal,
+          },
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error sending banking message:', error);
+        return null;
+      }
+
+      return {
+        id: message.id,
+        conversation_id: message.conversation_id,
+        sender_type: senderType,
+        content: message.body_text || message.text || '',
+        created_at: message.created_at,
+        is_internal: isInternal,
+        metadata: message.body_json || {},
+      };
+    }
+
     const { data: message, error } = await supabase
       .from('messages')
       .insert({
@@ -284,7 +351,7 @@ export async function sendMessage(
       content: message.content,
       created_at: message.created_at,
       is_internal: isInternal,
-      metadata: {},
+      metadata: message.metadata || {},
     };
 
     return dbMessage;

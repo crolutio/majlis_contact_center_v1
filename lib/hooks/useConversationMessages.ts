@@ -8,6 +8,8 @@ import type { DbMessage } from '../types';
 interface UseConversationMessagesProps {
   conversationId: string | null;
   agentId: string;
+  source?: 'banking' | 'default';
+  channel?: 'voice' | 'chat' | 'email' | 'whatsapp' | 'sms';
 }
 
 interface UseConversationMessagesReturn {
@@ -19,7 +21,9 @@ interface UseConversationMessagesReturn {
 
 export function useConversationMessages({
   conversationId,
-  agentId
+  agentId,
+  source = 'default',
+  channel,
 }: UseConversationMessagesProps): UseConversationMessagesReturn {
   const [messages, setMessages] = useState<DbMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +41,7 @@ export function useConversationMessages({
       setError(null);
 
       try {
-        const msgs = await getConversationMessages(conversationId);
+        const msgs = await getConversationMessages(conversationId, source);
         setMessages(msgs);
       } catch (err) {
         console.error('Error loading messages:', err);
@@ -48,32 +52,43 @@ export function useConversationMessages({
     };
 
     loadMessages();
-  }, [conversationId]);
+  }, [conversationId, source]);
 
   // Set up real-time subscription for new messages
   useEffect(() => {
     if (!conversationId) return;
 
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
+    const realtimeTable = source === 'banking' ? 'cc_messages' : 'messages';
+    const realtimeChannel = supabase
+      .channel(`messages:${conversationId}:${realtimeTable}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'cc_messages',
+          table: realtimeTable,
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          const newMessage: DbMessage = {
-            id: payload.new.id,
-            conversation_id: payload.new.conversation_id,
-            sender_type: payload.new.direction === 'inbound' ? 'customer' : 'agent',
-            content: payload.new.body_text || payload.new.text || '',
-            created_at: payload.new.created_at,
-            is_internal: payload.new.metadata?.is_internal || false,
-            metadata: payload.new.metadata || {},
-          };
+          const newMessage: DbMessage = source === 'banking'
+            ? {
+                id: payload.new.id,
+                conversation_id: payload.new.conversation_id,
+                sender_type: payload.new.direction === 'inbound' ? 'customer' : 'agent',
+                content: payload.new.body_text || payload.new.text || '',
+                created_at: payload.new.created_at,
+                is_internal: payload.new.body_json?.is_internal || payload.new.metadata?.is_internal || false,
+                metadata: payload.new.body_json || payload.new.metadata || {},
+              }
+            : {
+                id: payload.new.id,
+                conversation_id: payload.new.conversation_id,
+                sender_type: payload.new.sender_type,
+                content: payload.new.content || '',
+                created_at: payload.new.created_at,
+                is_internal: payload.new.is_internal || false,
+                metadata: payload.new.metadata || {},
+              };
 
           setMessages(prev => [...prev, newMessage]);
         }
@@ -81,9 +96,9 @@ export function useConversationMessages({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(realtimeChannel);
     };
-  }, [conversationId]);
+  }, [conversationId, source]);
 
   // Send message function
   const send = useCallback(async (content: string, isInternal: boolean = false) => {
@@ -106,7 +121,10 @@ export function useConversationMessages({
       setMessages(prev => [...prev, optimisticMessage]);
 
       // Send to backend
-      const sentMessage = await sendMessage(conversationId, content.trim(), 'agent', isInternal);
+      const sentMessage = await sendMessage(conversationId, content.trim(), 'agent', isInternal, {
+        source,
+        channel,
+      });
 
       if (sentMessage) {
         // Replace optimistic message with real one
@@ -126,7 +144,7 @@ export function useConversationMessages({
       console.error('Error sending message:', err);
       setError('Failed to send message');
     }
-  }, [conversationId]);
+  }, [conversationId, source, channel]);
 
   return {
     messages,

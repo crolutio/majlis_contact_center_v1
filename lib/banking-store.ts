@@ -150,6 +150,10 @@ export async function getAllBankingConversations(): Promise<Conversation[]> {
           aiConfidence: 0.85,
           escalationRisk: conv.priority === 'urgent' || conv.status === 'escalated',
           tags: [],
+          metadata: {
+            source: 'banking',
+            storage: 'cc',
+          },
         };
       });
       
@@ -247,6 +251,10 @@ export async function getBankingConversation(id: string): Promise<Conversation |
     aiConfidence: 0.85,
     escalationRisk: data.priority === 'urgent' || data.status === 'escalated',
     tags: [],
+    metadata: {
+      source: 'banking',
+      storage: 'cc',
+    },
   };
 }
 
