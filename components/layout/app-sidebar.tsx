@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Inbox,
   BarChart3,
@@ -91,9 +91,32 @@ const roleColors: Record<UserRole, string> = {
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, switchRole, logout } = useAuth()
 
   if (!user) return null
+
+  const getDefaultRouteForRole = (role: UserRole) => {
+    const navigation =
+      role === "back_office"
+        ? backOfficeNavigation
+        : role === "agent"
+        ? chatAgentNavigation
+        : role === "call_agent"
+          ? callAgentNavigation
+          : baseNavigation
+
+    const firstAllowed = navigation.find((item) => canAccessRoute(role, item.href))
+    return firstAllowed?.href ?? "/inbox"
+  }
+
+  const handleRoleSwitch = (role: UserRole) => {
+    switchRole(role)
+    const targetRoute = getDefaultRouteForRole(role)
+    if (pathname !== targetRoute) {
+      router.push(targetRoute)
+    }
+  }
 
   return (
     <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-screen border-r border-sidebar-border">
@@ -174,42 +197,42 @@ export function AppSidebar() {
           <DropdownMenuContent align="end" className="w-56" side="top">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => switchRole("agent")} className="capitalize">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("agent")} className="capitalize">
               <Badge variant="outline" className={cn("mr-2", roleColors.agent)}>
                 A
               </Badge>
               Agent
               {user.role === "agent" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => switchRole("call_agent")} className="capitalize">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("call_agent")} className="capitalize">
               <Badge variant="outline" className={cn("mr-2", roleColors.call_agent)}>
                 C
               </Badge>
               Call Agent
               {user.role === "call_agent" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => switchRole("supervisor")} className="capitalize">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("supervisor")} className="capitalize">
               <Badge variant="outline" className={cn("mr-2", roleColors.supervisor)}>
                 S
               </Badge>
               Supervisor
               {user.role === "supervisor" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => switchRole("admin")} className="capitalize">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("admin")} className="capitalize">
               <Badge variant="outline" className={cn("mr-2", roleColors.admin)}>
                 A
               </Badge>
               Admin
               {user.role === "admin" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => switchRole("analyst")} className="capitalize h-10">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("analyst")} className="capitalize h-10">
               <Badge variant="outline" className={cn("mr-2", roleColors.analyst)}>
                 A
               </Badge>
               Analyst
               {user.role === "analyst" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => switchRole("back_office")} className="capitalize">
+            <DropdownMenuItem onClick={() => handleRoleSwitch("back_office")} className="capitalize">
               <Badge variant="outline" className={cn("mr-2", roleColors.back_office)}>
                 B
               </Badge>
