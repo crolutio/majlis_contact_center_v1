@@ -12,7 +12,7 @@ load_dotenv(ENV_FILE)
 
 class Settings(BaseSettings):
     supabase_url: str = Field(..., alias="SUPABASE_URL")
-    supabase_service_role_key: str = Field(..., alias="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_service_role_key: str = Field(..., alias="SUPABASE_CONTACT_CENTER_SECRET_KEY")
     cors_origins: str = Field("http://localhost:3000", alias="CORS_ORIGINS")
 
     @property

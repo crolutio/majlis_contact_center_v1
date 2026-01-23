@@ -242,6 +242,7 @@ async def send_message(body: SendMessageRequest, request: Request):
                 body.conversation_id,
                 {
                     "handling_mode": "human",
+                    "assigned_agent_id": DEFAULT_AGENT_ID,  # Assign to human agent so realtime picks it up
                     "updated_at": now_iso(),
                 },
             )
