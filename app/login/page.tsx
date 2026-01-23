@@ -14,7 +14,7 @@ import { Shield, BarChart3, Users, Loader2, PhoneCall, Headphones, Monitor } fro
 import { MajlisConnectLogo } from "@/components/brand/majlis-connect-logo"
 
 const roleLabels: Record<UserRole, string> = {
-  agent: "Agent",
+  agent: "Human Desktop",
   call_agent: "Call Agent",
   supervisor: "Supervisor",
   admin: "Agent Builder",

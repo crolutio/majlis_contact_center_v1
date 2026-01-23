@@ -26,13 +26,15 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
 
         console.log('[useAgentInbox] Fetching conversations...');
 
-        // Get conversations with customer data
+        // Get conversations with customer data (limited for performance)
         const { data: convsWithCustomers, error: fetchError } = await supabase
           .from('conversations')
           .select(`
             *,
             customer:customers(*)
-          `);
+          `)
+          .order('last_message_time', { ascending: false })
+          .limit(100);
 
         console.log('[useAgentInbox] Response:', { 
           data: convsWithCustomers, 
@@ -52,29 +54,12 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
           return;
         }
 
-        // Fetch messages for each conversation
-        const convIds = convsWithCustomers.map((c: any) => c.id);
-        const { data: allMessages } = await supabase
-          .from('messages')
-          .select('id, conversation_id, created_at, content')
-          .in('conversation_id', convIds);
-
-        // Group messages by conversation
-        const messagesByConv = new Map();
-        allMessages?.forEach((msg: any) => {
-          if (!messagesByConv.has(msg.conversation_id)) {
-            messagesByConv.set(msg.conversation_id, []);
-          }
-          messagesByConv.get(msg.conversation_id).push(msg);
-        });
+        // PERFORMANCE: Don't fetch all messages for list view
+        // Messages are fetched separately when viewing a specific conversation
+        // This dramatically improves load time for large inboxes
 
         // Transform to Conversation format with ChatInbox expected fields
         const transformedConversations: any[] = convsWithCustomers.map((conv: any) => {
-          const messages = messagesByConv.get(conv.id) || [];
-          const lastMessage = messages.length > 0
-            ? messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-            : null;
-
           // Calculate time in queue (minutes since start_time)
           // Handle null/undefined start_time to prevent NaN
           const startTime = conv.start_time ? new Date(conv.start_time).getTime() : Date.now();
@@ -111,15 +96,12 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
             assignedTo: conv.assigned_to || null,
             queue: conv.queue || 'general',
             topic: conv.topic || '',
-            lastMessage: lastMessage?.content || conv.last_message || '',
-            lastMessageTime: lastMessage ? new Date(lastMessage.created_at) : new Date(conv.last_message_time || conv.start_time),
+            // Use last_message from conversation record (no need to fetch all messages)
+            lastMessage: conv.last_message || '',
+            lastMessageTime: new Date(conv.last_message_time || conv.start_time || Date.now()),
             startTime: new Date(conv.start_time || Date.now()),
-            messages: messages.map((msg: any) => ({
-              id: msg.id,
-              type: 'customer', // Default, would need more logic
-              content: msg.content || '',
-              timestamp: new Date(msg.created_at),
-            })),
+            // PERFORMANCE: Messages loaded separately when viewing conversation detail
+            messages: [],
             aiConfidence: 0.8,
             escalationRisk: false,
             tags: [],

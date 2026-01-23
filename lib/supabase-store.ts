@@ -414,15 +414,17 @@ export async function getAllMessages(): Promise<StoredMessage[]> {
  * Conversation functions
  */
 export async function getAllConversations(industry?: string): Promise<Conversation[]> {
+  // PERFORMANCE: Don't fetch messages for list view - only fetch when viewing a specific conversation
+  // This dramatically reduces query size and response time
   let query = supabase
     .from('conversations')
     .select(`
       *,
       customer:customers(*),
-      messages:messages(*),
       agent:agents(*)
     `)
-    .order('last_message_time', { ascending: false });
+    .order('last_message_time', { ascending: false })
+    .limit(100); // Limit results for performance
 
   if (industry) {
     query = query.eq('industry', industry);
@@ -467,15 +469,8 @@ export async function getAllConversations(industry?: string): Promise<Conversati
       lastMessage: conv.last_message || '',
       lastMessageTime: new Date(conv.last_message_time || conv.updated_at || conv.created_at),
       startTime: new Date(conv.start_time || conv.created_at),
-      messages: (conv.messages || []).map((msg: any) => ({
-        id: msg.id,
-        type: msg.type || msg.sender_type,
-        content: msg.content,
-        timestamp: new Date(msg.timestamp || msg.created_at),
-        sentiment: msg.sentiment || undefined,
-        confidence: msg.confidence || undefined,
-        isTranscript: msg.is_transcript || false,
-      })),
+      // PERFORMANCE: Messages are NOT fetched in list view - they're fetched separately when viewing a conversation
+      messages: [],
       aiConfidence: conv.ai_confidence || 0.8,
       escalationRisk: conv.escalation_risk || false,
       tags: conv.tags || [],

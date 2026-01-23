@@ -98,7 +98,8 @@ export default function LiveConsolePage() {
     fetchActiveCalls();
 
     // Poll for updates every 2 seconds for real-time feel
-    const interval = setInterval(fetchActiveCalls, 2000);
+    // Poll for updates every 10 seconds (reduced from 2s for performance)
+    const interval = setInterval(fetchActiveCalls, 10000);
 
     return () => clearInterval(interval);
   }, []);

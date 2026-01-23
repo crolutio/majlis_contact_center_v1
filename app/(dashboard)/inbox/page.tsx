@@ -169,8 +169,9 @@ export default function InboxPage() {
 
     fetchConversations();
 
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchConversations, 5000);
+    // Poll for updates every 30 seconds (reduced from 5s for performance)
+    // Consider using Supabase real-time subscriptions for instant updates without polling
+    const interval = setInterval(fetchConversations, 30000);
 
     return () => clearInterval(interval);
   }, [selectedIndustry]) // Only refetch when industry changes
