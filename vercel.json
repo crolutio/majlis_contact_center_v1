@@ -1,13 +1,7 @@
 {
-    "ignore": [
-      "docs/**",
-      "scripts/**",
-      "**/*.md",
-      "**/*.sql"
-    ],
     "functions": {
       "api/py/**/*.py": {
-        "excludeFiles": "{.next,.vercel,.git,**/__pycache__,**/*.log,**/logs,**/test_*}/**"
+        "excludeFiles": "{.next,.vercel,.git,**/__pycache__,**/*.log,**/logs,**/test_*,docs,scripts,**/*.md,**/*.sql}/**"
       }
     }
   }
