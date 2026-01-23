@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
@@ -41,7 +41,7 @@ export default function CaseDetailPage() {
   const router = useRouter()
   const { user } = useAuth()
   const role = user?.role
-  const params = useParams<{ id: string }>()
+  const params = React.use(useParams<{ id: string }>())
   const id = params?.id
 
   const [data, setData] = useState<CaseRow | null>(null)

@@ -91,11 +91,26 @@ export async function getAllBankingConversations(): Promise<Conversation[]> {
           ? new Date(messages[messages.length - 1].created_at)
           : openedAt;
 
+        const nameFromCustomer = customer
+          ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
+          : '';
+        const inboundAddress =
+          messages.find((msg: any) => msg.direction === 'inbound')?.from_address ||
+          messages.find((msg: any) => msg.direction === 'inbound')?.from ||
+          '';
+        const cleanedAddress = inboundAddress ? inboundAddress.replace(/^(whatsapp:|sms:|tel:)/i, '') : '';
+        const displayName =
+          nameFromCustomer ||
+          customer?.phone ||
+          customer?.email ||
+          cleanedAddress ||
+          'Unknown';
+
         return {
           id: conv.id,
           customer: {
             id: customer?.id || '',
-            name: customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown' : 'Unknown',
+            name: displayName,
             email: customer?.email || '',
             phone: customer?.phone || '',
             avatar: '/placeholder-user.jpg',

@@ -71,6 +71,15 @@ const backOfficeNavigation = [
   { name: "Knowledge", href: "/knowledge", icon: BookOpen },
 ]
 
+const roleLabels: Record<UserRole, string> = {
+  agent: "Agent",
+  call_agent: "Call Agent",
+  supervisor: "Supervisor",
+  admin: "Admin",
+  analyst: "Analyst",
+  back_office: "Back Office",
+}
+
 const roleColors: Record<UserRole, string> = {
   agent: "bg-blue-500/10 text-blue-600",
   call_agent: "bg-blue-500/10 text-blue-600",
@@ -155,33 +164,58 @@ export function AppSidebar() {
               </Avatar>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium truncate">{user.name}</p>
-                <Badge variant="outline" className={cn("text-[10px] capitalize px-1.5 py-0", roleColors[user.role])}>
-                  {user.role}
+                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", roleColors[user.role])}>
+                  {roleLabels[user.role]}
                 </Badge>
               </div>
               <ChevronDown className="w-4 h-4 text-sidebar-foreground/50" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56" side="top">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Users className="mr-2 h-4 w-4" />
-                Switch Role (Demo)
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {(["agent", "call_agent", "supervisor", "admin", "analyst", "back_office"] as UserRole[]).map((role) => (
-                  <DropdownMenuItem key={role} onClick={() => switchRole(role)} className="capitalize">
-                    <Badge variant="outline" className={cn("mr-2", roleColors[role])}>
-                      {role.slice(0, 1).toUpperCase()}
-                    </Badge>
-                    {role === "call_agent" ? "call agent" : role}
-                    {user.role === role && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+            <DropdownMenuItem onClick={() => switchRole("agent")} className="capitalize">
+              <Badge variant="outline" className={cn("mr-2", roleColors.agent)}>
+                A
+              </Badge>
+              Agent
+              {user.role === "agent" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => switchRole("call_agent")} className="capitalize">
+              <Badge variant="outline" className={cn("mr-2", roleColors.call_agent)}>
+                C
+              </Badge>
+              Call Agent
+              {user.role === "call_agent" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => switchRole("supervisor")} className="capitalize">
+              <Badge variant="outline" className={cn("mr-2", roleColors.supervisor)}>
+                S
+              </Badge>
+              Supervisor
+              {user.role === "supervisor" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => switchRole("admin")} className="capitalize">
+              <Badge variant="outline" className={cn("mr-2", roleColors.admin)}>
+                A
+              </Badge>
+              Admin
+              {user.role === "admin" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => switchRole("analyst")} className="capitalize h-10">
+              <Badge variant="outline" className={cn("mr-2", roleColors.analyst)}>
+                A
+              </Badge>
+              Analyst
+              {user.role === "analyst" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => switchRole("back_office")} className="capitalize">
+              <Badge variant="outline" className={cn("mr-2", roleColors.back_office)}>
+                B
+              </Badge>
+              Back Office
+              {user.role === "back_office" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />

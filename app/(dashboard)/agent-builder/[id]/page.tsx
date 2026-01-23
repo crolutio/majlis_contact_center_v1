@@ -2,7 +2,7 @@
 
 import "reactflow/dist/style.css"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import ReactFlow, {
   Background,
@@ -109,7 +109,7 @@ function defaultGraph(): AgentFlowGraph {
 
 export default function AgentBuilderEditorPage() {
   const router = useRouter()
-  const params = useParams<{ id: string }>()
+  const params = React.use(useParams<{ id: string }>())
   const flowId = params?.id as string
 
   const { user } = useAuth()
