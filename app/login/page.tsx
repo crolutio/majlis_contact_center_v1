@@ -17,7 +17,7 @@ const roleLabels: Record<UserRole, string> = {
   agent: "Agent",
   call_agent: "Call Agent",
   supervisor: "Supervisor",
-  admin: "Admin",
+  admin: "Agent Builder",
   analyst: "Analyst",
   back_office: "Back Office",
 }
@@ -37,7 +37,7 @@ const roleInfo: Record<UserRole, { icon: React.ElementType; description: string 
   },
   admin: {
     icon: Shield,
-    description: "Full system access, user and AI configuration",
+    description: "Build and configure AI agents, knowledge, integrations",
   },
   analyst: {
     icon: BarChart3,
@@ -69,7 +69,9 @@ export default function LoginPage() {
             ? "/call-agent"
             : selectedRole === "agent"
               ? "/chat-agent"
-              : "/inbox",
+              : selectedRole === "admin"
+                ? "/agent-builder"
+                : "/inbox",
       )
     } catch (error) {
       console.error("Login failed:", error)
@@ -89,7 +91,9 @@ export default function LoginPage() {
             ? "/call-agent"
             : selectedRole === "agent"
               ? "/chat-agent"
-              : "/inbox",
+              : selectedRole === "admin"
+                ? "/agent-builder"
+                : "/inbox",
       )
     } catch (error) {
       console.error("SSO login failed:", error)

@@ -71,11 +71,19 @@ const backOfficeNavigation = [
   { name: "Knowledge", href: "/knowledge", icon: BookOpen },
 ]
 
+// Admin/Agent Builder navigation (limited access)
+const adminNavigation = [
+  { name: "Agent Builder", href: "/agent-builder", icon: GitBranch },
+  { name: "Knowledge", href: "/knowledge", icon: BookOpen },
+  { name: "Integrations", href: "/integrations", icon: PlugZap },
+  { name: "Settings", href: "/settings", icon: Settings },
+]
+
 const roleLabels: Record<UserRole, string> = {
   agent: "Agent",
   call_agent: "Call Agent",
   supervisor: "Supervisor",
-  admin: "Admin",
+  admin: "Agent Builder",
   analyst: "Analyst",
   back_office: "Back Office",
 }
@@ -108,7 +116,7 @@ export function AppSidebar() {
     <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-screen border-r border-sidebar-border">
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <Link href="/inbox" className="flex items-center gap-2">
+        <Link href={user.role === "admin" ? "/agent-builder" : user.role === "agent" ? "/chat-agent" : user.role === "call_agent" ? "/call-agent" : user.role === "back_office" ? "/back-office" : "/inbox"} className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
             <MajlisConnectLogo className="w-5 h-5 text-sidebar-primary-foreground" />
           </div>
@@ -124,7 +132,9 @@ export function AppSidebar() {
           ? chatAgentNavigation
           : user.role === "call_agent"
             ? callAgentNavigation
-            : baseNavigation).map((item) => {
+            : user.role === "admin"
+              ? adminNavigation
+              : baseNavigation).map((item) => {
           const isActive = pathname.startsWith(item.href)
           const hasAccess = canAccessRoute(user.role, item.href)
           const Icon = item.icon
@@ -208,7 +218,7 @@ export function AppSidebar() {
               <Badge variant="outline" className={cn("mr-2", roleColors.admin)}>
                 A
               </Badge>
-              Admin
+              Agent Builder
               {user.role === "admin" && <span className="ml-auto text-xs text-muted-foreground">Current</span>}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleRoleSwitch("analyst")} className="capitalize h-10">
