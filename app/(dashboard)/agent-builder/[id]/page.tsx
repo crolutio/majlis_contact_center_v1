@@ -109,7 +109,7 @@ function defaultGraph(): AgentFlowGraph {
 
 export default function AgentBuilderEditorPage() {
   const router = useRouter()
-  const params = React.use(useParams<{ id: string }>())
+  const params = useParams<{ id: string }>()
   const flowId = params?.id as string
 
   const { user } = useAuth()
