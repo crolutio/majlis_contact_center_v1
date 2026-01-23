@@ -90,7 +90,7 @@ export function HandoverModal({ open, onClose, conversation }: HandoverModalProp
           <div className="bg-muted/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{conversation.customer.name}</p>
+                <p className="font-medium">{conversation.customer?.name || 'Unknown Customer'}</p>
                 <p className="text-sm text-muted-foreground">
                   {conversation.topic} • {conversation.channel}
                 </p>

@@ -101,20 +101,20 @@ export function ConversationDrawer({ conversation, open, onClose }: Conversation
               <div className="flex items-start gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage
-                    src={conversation.customer.avatar || "/placeholder.svg"}
-                    alt={conversation.customer.name}
+                    src={conversation.customer?.avatar || "/placeholder.svg"}
+                    alt={conversation.customer?.name || 'Unknown Customer'}
                   />
                   <AvatarFallback className="text-lg">
-                    {conversation.customer.name
+                    {(conversation.customer?.name || 'Unknown')
                       .split(" ")
                       .map((n) => n[0])
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-lg">{conversation.customer.name}</h3>
+                  <h3 className="font-semibold text-lg">{conversation.customer?.name || 'Unknown Customer'}</h3>
                   <Badge variant="outline" className="capitalize mt-1">
-                    {conversation.customer.tier}
+                    {conversation.customer?.tier || 'standard'}
                   </Badge>
                 </div>
               </div>
@@ -127,17 +127,17 @@ export function ConversationDrawer({ conversation, open, onClose }: Conversation
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{conversation.customer.email}</span>
+                    <span>{conversation.customer?.email || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{conversation.customer.phone}</span>
+                    <span>{conversation.customer?.phone || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span>{conversation.customer.language}</span>
+                    <span>{conversation.customer?.language || 'English'}</span>
                     <Badge variant="outline" className="text-xs uppercase">
-                      {conversation.customer.preferredLanguage}
+                      {conversation.customer?.preferredLanguage || 'en'}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
@@ -284,7 +284,7 @@ export function ConversationDrawer({ conversation, open, onClose }: Conversation
                     <ThumbsDown className="h-4 w-4 text-red-500" />
                     <span className="font-medium text-red-600">Negative</span>
                     <Badge variant="outline" className="text-xs">
-                      {Math.round(conversation.sentimentScore * 100)}%
+                      {Math.round((conversation.sentimentScore || 0) * 100)}%
                     </Badge>
                   </div>
                 </div>

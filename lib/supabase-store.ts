@@ -455,7 +455,7 @@ export async function getAllConversations(industry?: string): Promise<Conversati
       status: conv.status,
       priority: conv.priority,
       sentiment: conv.sentiment,
-      sentimentScore: conv.sentiment_score,
+      sentimentScore: conv.sentiment_score || 0.5,
       sla: {
         deadline: conv.sla_deadline ? new Date(conv.sla_deadline) : new Date(),
         remaining: conv.sla_remaining || 0,
@@ -476,8 +476,8 @@ export async function getAllConversations(industry?: string): Promise<Conversati
         confidence: msg.confidence || undefined,
         isTranscript: msg.is_transcript || false,
       })),
-      aiConfidence: conv.ai_confidence,
-      escalationRisk: conv.escalation_risk,
+      aiConfidence: conv.ai_confidence || 0.8,
+      escalationRisk: conv.escalation_risk || false,
       tags: conv.tags || [],
       metadata: {
         source: conv.source || conv.industry || 'default',

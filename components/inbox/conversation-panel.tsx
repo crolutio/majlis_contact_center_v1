@@ -299,9 +299,9 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
             </Avatar>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold">{conversation.customer.name}</h2>
+                <h2 className="font-semibold">{conversation.customer?.name || 'Unknown Customer'}</h2>
                 <Badge variant="outline" className="text-xs capitalize">
-                  {conversation.customer.tier}
+                  {conversation.customer?.tier || 'standard'}
                 </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -341,14 +341,14 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
-                      conversation.sentimentScore >= 0.6 && "bg-emerald-500",
-                      conversation.sentimentScore >= 0.4 && conversation.sentimentScore < 0.6 && "bg-amber-500",
-                      conversation.sentimentScore < 0.4 && "bg-red-500",
+                      (conversation.sentimentScore || 0) >= 0.6 && "bg-emerald-500",
+                      (conversation.sentimentScore || 0) >= 0.4 && (conversation.sentimentScore || 0) < 0.6 && "bg-amber-500",
+                      (conversation.sentimentScore || 0) < 0.4 && "bg-red-500",
                     )}
-                    style={{ width: `${conversation.sentimentScore * 100}%` }}
+                    style={{ width: `${(conversation.sentimentScore || 0) * 100}%` }}
                   />
                 </div>
-                <span className="text-xs font-medium">{Math.round(conversation.sentimentScore * 100)}%</span>
+                <span className="text-xs font-medium">{Math.round((conversation.sentimentScore || 0) * 100)}%</span>
               </div>
             </div>
 
@@ -413,7 +413,7 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">AI Suggested Response</span>
                 <Badge variant="outline" className="text-xs ml-auto">
-                  {Math.round(conversation.aiConfidence * 100)}% match
+                  {Math.round((conversation.aiConfidence || 0) * 100)}% match
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mb-3">{aiSuggestion}</p>
@@ -451,7 +451,7 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
                   <Lightbulb className="h-3 w-3" />
                   {kb.title}
                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                    {Math.round(kb.relevance * 100)}%
+                    {Math.round((kb.relevance || 0) * 100)}%
                   </Badge>
                 </Button>
               ))}

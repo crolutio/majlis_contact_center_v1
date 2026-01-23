@@ -127,11 +127,11 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                 <div className="relative">
                   <Avatar className="h-10 w-10">
                     <AvatarImage
-                      src={conversation.customer.avatar || "/placeholder.svg"}
-                      alt={conversation.customer.name}
+                      src={conversation.customer?.avatar || "/placeholder.svg"}
+                      alt={conversation.customer?.name || 'Unknown Customer'}
                     />
                     <AvatarFallback>
-                      {conversation.customer.name
+                      {(conversation.customer?.name || 'Unknown')
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
@@ -150,7 +150,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-medium text-sm truncate">{conversation.customer.name}</span>
+                    <span className="font-medium text-sm truncate">{conversation.customer?.name || 'Unknown Customer'}</span>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatTime(conversation.lastMessageTime)}
                     </span>
@@ -165,14 +165,14 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                       variant="outline"
                       className={cn(
                         "text-[10px] px-1.5 py-0 gap-1",
-                        conversation.sla.status === "healthy" &&
+                        conversation.sla?.status === "healthy" &&
                           "bg-emerald-500/10 text-emerald-600 border-emerald-200",
-                        conversation.sla.status === "warning" && "bg-amber-500/10 text-amber-600 border-amber-200",
-                        conversation.sla.status === "breached" && "bg-red-500/10 text-red-600 border-red-200",
+                        conversation.sla?.status === "warning" && "bg-amber-500/10 text-amber-600 border-amber-200",
+                        conversation.sla?.status === "breached" && "bg-red-500/10 text-red-600 border-red-200",
                       )}
                     >
                       <Clock className="h-2.5 w-2.5" />
-                      {conversation.sla.remaining > 0 ? `${conversation.sla.remaining}m` : "Breached"}
+                      {(conversation.sla?.remaining || 0) > 0 ? `${conversation.sla.remaining}m` : "Breached"}
                     </Badge>
 
                     {/* Sentiment Badge */}
@@ -192,7 +192,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                     )}
 
                     {/* Language Badge (if not English) */}
-                    {conversation.customer.preferredLanguage !== "en" && (
+                    {conversation.customer?.preferredLanguage !== "en" && conversation.customer?.preferredLanguage && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase">
                         {conversation.customer.preferredLanguage}
                       </Badge>
