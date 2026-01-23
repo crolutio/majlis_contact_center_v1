@@ -73,13 +73,29 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
     e.stopPropagation()
   }
 
-  const formatTime = (date: Date | string) => {
-    // Handle both Date objects and date strings (from API)
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    
-    // Check if date is valid
-    if (!dateObj || isNaN(dateObj.getTime())) {
-      return 'Just now'
+  const parseTimestamp = (value: Date | string | null | undefined) => {
+    if (!value) return null
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const getConversationTime = (conversation: Conversation) => {
+    const lastMessageTime = parseTimestamp(conversation.lastMessageTime)
+    if (lastMessageTime) return lastMessageTime
+    const messageTimes = (conversation.messages || [])
+      .map((msg) => parseTimestamp(msg.timestamp))
+      .filter((ts): ts is Date => !!ts)
+    if (messageTimes.length > 0) {
+      return new Date(Math.max(...messageTimes.map((ts) => ts.getTime())))
+    }
+    return parseTimestamp(conversation.startTime)
+  }
+
+  const formatTime = (date: Date | string | null | undefined) => {
+    const dateObj = parseTimestamp(date)
+    if (!dateObj) {
+      return 'Unknown time'
     }
     
     const now = new Date()
@@ -155,7 +171,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="font-medium text-sm truncate">{conversation.customer?.name || 'Unknown Customer'}</span>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatTime(conversation.lastMessageTime)}
+                      {formatTime(getConversationTime(conversation))}
                     </span>
                   </div>
 
@@ -164,23 +180,33 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                   {/* Badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* SLA Badge */}
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-[10px] px-1.5 py-0 gap-1",
-                        conversation.sla?.status === "healthy" &&
-                          "bg-emerald-500/10 text-emerald-600 border-emerald-200",
-                        conversation.sla?.status === "warning" && "bg-amber-500/10 text-amber-600 border-amber-200",
-                        conversation.sla?.status === "breached" && "bg-red-500/10 text-red-600 border-red-200",
-                      )}
-                    >
-                      <Clock className="h-2.5 w-2.5" />
-                      {(conversation.sla?.remaining || 0) > 0 ? `${conversation.sla.remaining}m` : "Breached"}
-                    </Badge>
+                    {(() => {
+                      const deadline = parseTimestamp(conversation.sla?.deadline)
+                      const remaining = typeof conversation.sla?.remaining === "number"
+                        ? conversation.sla.remaining
+                        : deadline
+                          ? Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / 60000))
+                          : null
+                      return (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 gap-1",
+                            conversation.sla?.status === "healthy" &&
+                              "bg-emerald-500/10 text-emerald-600 border-emerald-200",
+                            conversation.sla?.status === "warning" && "bg-amber-500/10 text-amber-600 border-amber-200",
+                            conversation.sla?.status === "breached" && "bg-red-500/10 text-red-600 border-red-200",
+                          )}
+                        >
+                          <Clock className="h-2.5 w-2.5" />
+                          {remaining !== null ? (remaining > 0 ? `${remaining}m` : "Breached") : "N/A"}
+                        </Badge>
+                      )
+                    })()}
 
                     {/* Sentiment Badge */}
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                      <SentimentIcon className={cn("h-2.5 w-2.5", sentimentColors[conversation.sentiment])} />
+                      <SentimentIcon className={cn("h-2.5 w-2.5", sentimentColors[sentimentKey])} />
                     </Badge>
 
                     {/* Escalation Risk */}

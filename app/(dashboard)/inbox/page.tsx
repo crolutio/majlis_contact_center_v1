@@ -46,6 +46,25 @@ export default function InboxPage() {
   const [selectedSLA, setSelectedSLA] = useState<string[]>([])
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
 
+  const parseTimestamp = (value: Date | string | null | undefined) => {
+    if (!value) return null
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const getConversationLastActivityMs = (conv: Conversation) => {
+    const lastMessageTime = parseTimestamp(conv.lastMessageTime)
+    if (lastMessageTime) return lastMessageTime.getTime()
+    const messageTimes = (conv.messages || [])
+      .map((msg) => parseTimestamp(msg.timestamp))
+      .filter((ts): ts is Date => !!ts)
+      .map((ts) => ts.getTime())
+    if (messageTimes.length > 0) return Math.max(...messageTimes)
+    const startTime = parseTimestamp(conv.startTime)
+    return startTime ? startTime.getTime() : 0
+  }
+
   // Calculate counts for queues and channels
   const queueCounts = useMemo(() => {
     const counts = {
@@ -192,11 +211,10 @@ export default function InboxPage() {
     
     let filtered = filterByHandlingStatus(allFetchedConversations, selectedHandlingStatus);
     
-    // Only show conversations after handover is complete (when handling_mode = "human")
+    // Only show banking conversations after handover is complete (handling_mode = "human")
     filtered = filtered.filter((conv) => {
-      const handlingMode = conv.metadata?.handlingMode
-      if (!handlingMode) return true
-      return handlingMode === "human"
+      if (conv.metadata?.source !== "banking") return true
+      return conv.metadata?.handlingMode === "human"
     })
     
     // Apply queue filter
@@ -270,18 +288,19 @@ export default function InboxPage() {
     
     console.log('[Inbox] Filtered conversations:', filtered.length);
     
-    setConversations(filtered);
+    const sorted = [...filtered].sort((a, b) => getConversationLastActivityMs(b) - getConversationLastActivityMs(a))
+    setConversations(sorted);
     
     // Update selected conversation - only if current selection is not in filtered list
-    if (filtered.length > 0) {
+    if (sorted.length > 0) {
       const currentSelectedId = selectedConversation?.id
-      if (!currentSelectedId || !filtered.find(c => c.id === currentSelectedId)) {
+      if (!currentSelectedId || !sorted.find(c => c.id === currentSelectedId)) {
         // Current selection is not in filtered list, select first one
         console.log('[Inbox] Selecting first conversation from filtered list');
-        setSelectedConversation(filtered[0]);
+        setSelectedConversation(sorted[0]);
       } else {
         // Current selection is still valid, update it with latest data
-        const updated = filtered.find(c => c.id === currentSelectedId);
+        const updated = sorted.find(c => c.id === currentSelectedId);
         if (updated) {
           setSelectedConversation(updated);
         }
