@@ -31,7 +31,7 @@ This guide will help you set up a Supabase database for your contact center appl
 3. **Add to `.env.local`**:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key-here
    ```
 
 ## Step 3: Run Database Migrations
@@ -150,7 +150,7 @@ By default, the app uses in-memory storage. To switch to Supabase:
 - Check table names match exactly (case-sensitive)
 
 ### Connection errors
-- Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are correct
+- Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` are correct
 - Check your Supabase project is active
 - Ensure network access is allowed
 

@@ -131,7 +131,7 @@ If conversations still don't load, check:
    ```
 
 2. **Supabase API Key**
-   Verify `NEXT_PUBLIC_SUPABASE_ANON_KEY` is set correctly in `.env.local`
+   Verify `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` is set correctly in `.env.local`
 
 3. **Network Tab**
    Check for failed requests to Supabase REST API

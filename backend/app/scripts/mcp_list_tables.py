@@ -27,7 +27,7 @@ def load_mcp_servers(config_path: Path) -> dict:
         config = json.load(f)
 
     servers = config.get("mcpServers", {})
-    supabase_key = os.getenv("SUPABASE_ANON_KEY")
+    supabase_key = os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY")
     supabase_pat = os.getenv("SUPABASE_ACCESS_TOKEN")
 
     for name, server in servers.items():

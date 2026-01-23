@@ -14,7 +14,7 @@
 - **Status**: ✅ **ACCEPTABLE** (Intentionally simplified)
 - **What exists**:
   - `.env.local` file (contains secrets - currently committed to git by design)
-  - Environment variables used: `OPENAI_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `SENDGRID_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `USE_SUPABASE`, `USE_LANGGRAPH`, `USE_VAPI`
+  - Environment variables used: `OPENAI_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `SENDGRID_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`, `USE_SUPABASE`, `USE_LANGGRAPH`, `USE_VAPI`
 - **What's intentionally skipped**:
   - ⏭️ `.env.example` file (skipped per user preference)
   - ⏭️ Secret manager integration (using `.env.local` in git for now)

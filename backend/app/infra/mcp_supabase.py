@@ -32,7 +32,7 @@ def load_mcp_servers(config_path: str | None = None) -> Dict[str, Any]:
     Also injects Authorization header for supabase server entries:
     - Prefer SUPABASE_ACCESS_TOKEN (PAT)
     - Fall back to existing config Authorization header (if present)
-    - Finally fall back to SUPABASE_ANON_KEY (last resort; usually not enough for hosted MCP)
+    - Finally fall back to NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (last resort; usually not enough for hosted MCP)
     """
     if config_path is None:
         config_path = str(_MODULE_DIR / "mcp.json")

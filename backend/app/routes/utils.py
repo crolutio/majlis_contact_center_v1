@@ -3,6 +3,7 @@ from typing import Tuple, Optional, Dict, Any, List, Literal
 from datetime import datetime, timezone
 from pathlib import Path
 import logging
+import sys
 
 from app.infra.supabase_client import supabase
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -42,24 +43,29 @@ Rules:
 # AI Agent ID constant
 AI_AGENT_ID = "11111111-1111-1111-1111-111111111111"  # your bot agent row in public.agents
 
-LOG_BASE_DIR = Path(__file__).resolve().parent.parent / "logs"
 APP_LOG_NAME = "app"
 ERROR_LOG_NAME = "app.errors"
 
 
 def init_logging() -> None:
-    log_dir = LOG_BASE_DIR
-    log_dir.mkdir(parents=True, exist_ok=True)
-
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
 
+    # Configure root logger to write to stdout
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    if not root_logger.handlers:
+        root_handler = logging.StreamHandler(sys.stdout)
+        root_handler.setLevel(logging.INFO)
+        root_handler.setFormatter(formatter)
+        root_logger.addHandler(root_handler)
+
     app_logger = logging.getLogger(APP_LOG_NAME)
     if not app_logger.handlers:
         app_logger.setLevel(logging.INFO)
-        app_handler = logging.FileHandler(log_dir / "app.log", mode="w", encoding="utf-8")
+        app_handler = logging.StreamHandler(sys.stdout)
         app_handler.setLevel(logging.INFO)
         app_handler.setFormatter(formatter)
         app_logger.addHandler(app_handler)
@@ -67,7 +73,7 @@ def init_logging() -> None:
     error_logger = logging.getLogger(ERROR_LOG_NAME)
     if not error_logger.handlers:
         error_logger.setLevel(logging.ERROR)
-        error_handler = logging.FileHandler(log_dir / "errors.log", mode="w", encoding="utf-8")
+        error_handler = logging.StreamHandler(sys.stdout)
         error_handler.setLevel(logging.ERROR)
         error_handler.setFormatter(formatter)
         error_logger.addHandler(error_handler)

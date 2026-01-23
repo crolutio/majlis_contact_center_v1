@@ -16,7 +16,7 @@ Quick checklist for deploying to Vercel with public demo access.
 - [ ] Build command: `npm run build` (or `pnpm build`)
 - [ ] All environment variables added:
   - [ ] `NEXT_PUBLIC_SUPABASE_URL`
-  - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
   - [ ] `SUPABASE_SERVICE_ROLE_KEY`
   - [ ] `USE_SUPABASE=true`
   - [ ] `TWILIO_ACCOUNT_SID` (for phone/WhatsApp)
