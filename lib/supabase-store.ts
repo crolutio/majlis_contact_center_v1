@@ -269,10 +269,13 @@ export async function appendCallTranscript(callSid: string, turns: TranscriptTur
   if (callRow.conversation_id) {
     const msgRows = turns.map((t) => ({
       conversation_id: callRow.conversation_id,
-      type: t.speaker,
+      sender_type: t.speaker,
       content: t.text,
-      timestamp: t.timestamp.toISOString(),
-      is_transcript: true,
+      created_at: t.timestamp.toISOString(),
+      is_internal: false,
+      source: 'default',
+      channel: 'voice',
+      metadata: { is_transcript: true },
     }));
 
     const { error: msgErr } = await supabase.from('messages').insert(msgRows);
@@ -422,9 +425,7 @@ export async function getAllConversations(industry?: string): Promise<Conversati
     .order('last_message_time', { ascending: false });
 
   if (industry) {
-    // Filter by industry, but also include conversations without industry set (null)
-    // This ensures WhatsApp/Email conversations created before industry was added still appear
-    query = query.or(`industry.eq.${industry},industry.is.null`);
+    query = query.eq('industry', industry);
   }
 
   const { data, error } = await query;
@@ -460,17 +461,17 @@ export async function getAllConversations(industry?: string): Promise<Conversati
         remaining: conv.sla_remaining || 0,
         status: conv.sla_status,
       },
-      assignedTo: conv.assigned_to || null,
+      assignedTo: conv.assigned_agent_id || conv.assigned_to || null,
       queue: conv.queue || 'General Support',
-      topic: conv.topic || '',
+      topic: conv.topic || conv.subject || '',
       lastMessage: conv.last_message || '',
-      lastMessageTime: new Date(conv.last_message_time),
-      startTime: new Date(conv.start_time),
+      lastMessageTime: new Date(conv.last_message_time || conv.updated_at || conv.created_at),
+      startTime: new Date(conv.start_time || conv.created_at),
       messages: (conv.messages || []).map((msg: any) => ({
         id: msg.id,
-        type: msg.type,
+        type: msg.type || msg.sender_type,
         content: msg.content,
-        timestamp: new Date(msg.timestamp),
+        timestamp: new Date(msg.timestamp || msg.created_at),
         sentiment: msg.sentiment || undefined,
         confidence: msg.confidence || undefined,
         isTranscript: msg.is_transcript || false,
@@ -478,6 +479,9 @@ export async function getAllConversations(industry?: string): Promise<Conversati
       aiConfidence: conv.ai_confidence,
       escalationRisk: conv.escalation_risk,
       tags: conv.tags || [],
+      metadata: {
+        source: conv.source || conv.industry || 'default',
+      },
     };
   });
 }
@@ -518,17 +522,17 @@ export async function getConversation(id: string): Promise<Conversation | null> 
       remaining: data.sla_remaining || 0,
       status: data.sla_status,
     },
-    assignedTo: data.assigned_to || null,
+    assignedTo: data.assigned_agent_id || data.assigned_to || null,
     queue: data.queue || 'General Support',
-    topic: data.topic || '',
+    topic: data.topic || data.subject || '',
     lastMessage: data.last_message || '',
-    lastMessageTime: new Date(data.last_message_time),
-    startTime: new Date(data.start_time),
+    lastMessageTime: new Date(data.last_message_time || data.updated_at || data.created_at),
+    startTime: new Date(data.start_time || data.created_at),
     messages: (data.messages || []).map((msg: any) => ({
       id: msg.id,
-      type: msg.type,
+      type: msg.type || msg.sender_type,
       content: msg.content,
-      timestamp: new Date(msg.timestamp),
+      timestamp: new Date(msg.timestamp || msg.created_at),
       sentiment: msg.sentiment || undefined,
       confidence: msg.confidence || undefined,
       isTranscript: msg.is_transcript || false,
@@ -536,6 +540,9 @@ export async function getConversation(id: string): Promise<Conversation | null> 
     aiConfidence: data.ai_confidence,
     escalationRisk: data.escalation_risk,
     tags: data.tags || [],
+    metadata: {
+      source: data.source || data.industry || 'default',
+    },
   };
 }
 
@@ -546,11 +553,14 @@ export async function updateConversation(id: string, updates: Partial<Conversati
   if (updates.priority) updateData.priority = updates.priority;
   if (updates.sentiment) updateData.sentiment = updates.sentiment;
   if (updates.sentimentScore !== undefined) updateData.sentiment_score = updates.sentimentScore;
-  if (updates.assignedTo !== undefined) updateData.assigned_to = updates.assignedTo;
+  if (updates.assignedTo !== undefined) updateData.assigned_agent_id = updates.assignedTo;
   if (updates.lastMessage) updateData.last_message = updates.lastMessage;
   if (updates.lastMessageTime) updateData.last_message_time = updates.lastMessageTime.toISOString();
   if (updates.escalationRisk !== undefined) updateData.escalation_risk = updates.escalationRisk;
   if (updates.tags) updateData.tags = updates.tags;
+  if (updates.metadata && typeof updates.metadata === 'object') {
+    if (typeof updates.metadata.source === 'string') updateData.source = updates.metadata.source;
+  }
 
   const { error } = await supabase
     .from('conversations')
@@ -641,8 +651,7 @@ export async function createConversationFromCall(call: StoredCall): Promise<stri
         sla_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         sla_remaining: 30,
         sla_status: 'healthy',
-        assigned_to: call.agentId || null,
-        assigned_agent_id: DEFAULT_AGENT_ID,
+        assigned_agent_id: call.agentId || DEFAULT_AGENT_ID,
         queue: 'General Support',
         topic: call.topic || 'Incoming Call',
         last_message: 'Call in progress',
@@ -651,6 +660,8 @@ export async function createConversationFromCall(call: StoredCall): Promise<stri
         ai_confidence: 0.85,
         escalation_risk: call.sentiment === 'negative',
         tags: call.sentiment === 'negative' ? ['urgent'] : [],
+        source: 'banking',
+        industry: 'banking',
       })
       .select('id')
       .single();
@@ -713,7 +724,7 @@ export async function createConversationFromMessage(message: StoredMessage): Pro
     const { data: existingConversation } = await supabase
       .from('conversations')
       .select('id')
-      .eq('customer_id', customerId)
+        .eq('customer_id', customerId)
       .eq('channel', channel)
       .in('status', ['active', 'waiting'])
       .order('last_message_time', { ascending: false })
@@ -759,7 +770,8 @@ export async function createConversationFromMessage(message: StoredMessage): Pro
           ai_confidence: 0.85,
           escalation_risk: false,
           tags: [],
-                industry: 'banking', // Default industry for new conversations
+          source: 'banking',
+          industry: 'banking',
         })
         .select('id')
         .single();

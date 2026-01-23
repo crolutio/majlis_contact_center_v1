@@ -525,20 +525,11 @@ async function escalateToHuman(state: AgentState): Promise<Partial<AgentState>> 
   // Update conversation in database to mark for human assignment
   const conversation = state.conversation || await getConversation(state.conversation_id);
   if (conversation) {
-    try {
-      const { updateBankingConversation } = await import('@/lib/banking-store');
-      await updateBankingConversation(state.conversation_id, {
-        status: 'escalated',
-        priority: 'urgent',
-      });
-    } catch {
-      // Fallback to old store
-      await updateConversation(state.conversation_id, {
-        status: 'escalated',
-        priority: 'high',
-        escalationRisk: true,
-      });
-    }
+    await updateConversation(state.conversation_id, {
+      status: 'escalated',
+      priority: 'high',
+      escalationRisk: true,
+    });
   }
 
   // Audit: Escalation

@@ -226,29 +226,6 @@ export async function getConversationMessages(
   source: 'banking' | 'default' = 'default'
 ): Promise<DbMessage[]> {
   try {
-    if (source === 'banking') {
-      const { data: messages, error } = await supabase
-        .from('cc_messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching banking messages:', error);
-        return [];
-      }
-
-      return (messages || []).map((msg: any) => ({
-        id: msg.id,
-        conversation_id: msg.conversation_id,
-        sender_type: msg.direction === 'inbound' ? 'customer' : 'agent',
-        content: msg.body_text || msg.text || '',
-        created_at: msg.created_at,
-        is_internal: msg.body_json?.is_internal || msg.metadata?.is_internal || false,
-        metadata: msg.body_json || msg.metadata || {},
-      }));
-    }
-
     const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
@@ -265,11 +242,11 @@ export async function getConversationMessages(
     const dbMessages: DbMessage[] = (messages || []).map((msg: any) => ({
       id: msg.id,
       conversation_id: msg.conversation_id,
-      sender_type: msg.sender_type as 'customer' | 'agent' | 'ai' | 'system', // Use sender_type from database
+      sender_type: (msg.sender_type || msg.type || 'customer') as 'customer' | 'agent' | 'ai' | 'system',
       content: msg.content || '',
-      created_at: msg.created_at,
-      is_internal: msg.is_internal || false,
-      metadata: msg.metadata || {},
+      created_at: msg.created_at || msg.timestamp,
+      is_internal: msg.is_internal || msg.metadata?.is_internal || false,
+      metadata: msg.metadata || msg.payload || {},
     }));
 
     return dbMessages;
@@ -287,53 +264,28 @@ export async function sendMessage(
   options?: {
     source?: 'banking' | 'default';
     channel?: 'voice' | 'chat' | 'email' | 'whatsapp' | 'sms';
+    agentId?: string;
+    customerId?: string;
   }
 ): Promise<DbMessage | null> {
   try {
     const source = options?.source || 'default';
-
-    if (source === 'banking') {
-      const channel = options?.channel || 'chat';
-      const { data: message, error } = await supabase
-        .from('cc_messages')
-        .insert({
-          conversation_id: conversationId,
-          direction: senderType === 'customer' ? 'inbound' : 'outbound',
-          channel,
-          body_text: content,
-          status: 'sent',
-          body_json: {
-            sender_type: senderType,
-            is_internal: isInternal,
-          },
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error sending banking message:', error);
-        return null;
-      }
-
-      return {
-        id: message.id,
-        conversation_id: message.conversation_id,
-        sender_type: senderType,
-        content: message.body_text || message.text || '',
-        created_at: message.created_at,
-        is_internal: isInternal,
-        metadata: message.body_json || {},
-      };
-    }
+    const channel = options?.channel || 'chat';
+    const createdAt = new Date().toISOString();
 
     const { data: message, error } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         sender_type: senderType,
+        sender_agent_id: options?.agentId || null,
+        sender_customer_id: options?.customerId || null,
         content: content,
+        created_at: createdAt,
+        source,
+        channel,
         is_internal: isInternal,
+        metadata: { is_internal: isInternal },
       })
       .select()
       .single();
@@ -349,9 +301,9 @@ export async function sendMessage(
       conversation_id: message.conversation_id,
       sender_type: senderType,
       content: message.content,
-      created_at: message.created_at,
+      created_at: message.created_at || message.timestamp,
       is_internal: isInternal,
-      metadata: message.metadata || {},
+      metadata: message.metadata || message.payload || {},
     };
 
     return dbMessage;

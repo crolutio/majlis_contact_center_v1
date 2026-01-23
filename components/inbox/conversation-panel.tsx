@@ -73,7 +73,7 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
   const { messages: dbMessages, send: sendMessage } = useConversationMessages({
     conversationId: conversation?.id ?? null,
     agentId,
-    source: conversation?.metadata?.source === 'banking' ? 'banking' : 'default',
+    source: (conversation?.metadata?.source as 'banking' | 'default') || 'default',
     channel: conversation?.channel,
   })
 

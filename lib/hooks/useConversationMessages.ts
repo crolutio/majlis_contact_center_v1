@@ -58,37 +58,26 @@ export function useConversationMessages({
   useEffect(() => {
     if (!conversationId) return;
 
-    const realtimeTable = source === 'banking' ? 'cc_messages' : 'messages';
     const realtimeChannel = supabase
-      .channel(`messages:${conversationId}:${realtimeTable}`)
+      .channel(`messages:${conversationId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: realtimeTable,
+          table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          const newMessage: DbMessage = source === 'banking'
-            ? {
-                id: payload.new.id,
-                conversation_id: payload.new.conversation_id,
-                sender_type: payload.new.direction === 'inbound' ? 'customer' : 'agent',
-                content: payload.new.body_text || payload.new.text || '',
-                created_at: payload.new.created_at,
-                is_internal: payload.new.body_json?.is_internal || payload.new.metadata?.is_internal || false,
-                metadata: payload.new.body_json || payload.new.metadata || {},
-              }
-            : {
-                id: payload.new.id,
-                conversation_id: payload.new.conversation_id,
-                sender_type: payload.new.sender_type,
-                content: payload.new.content || '',
-                created_at: payload.new.created_at,
-                is_internal: payload.new.is_internal || false,
-                metadata: payload.new.metadata || {},
-              };
+          const newMessage: DbMessage = {
+            id: payload.new.id,
+            conversation_id: payload.new.conversation_id,
+            sender_type: payload.new.sender_type || payload.new.type || 'customer',
+            content: payload.new.content || '',
+            created_at: payload.new.created_at || payload.new.timestamp,
+            is_internal: payload.new.is_internal || payload.new.metadata?.is_internal || false,
+            metadata: payload.new.metadata || payload.new.payload || {},
+          };
 
           setMessages(prev => [...prev, newMessage]);
         }
@@ -124,6 +113,7 @@ export function useConversationMessages({
       const sentMessage = await sendMessage(conversationId, content.trim(), 'agent', isInternal, {
         source,
         channel,
+        agentId,
       });
 
       if (sentMessage) {

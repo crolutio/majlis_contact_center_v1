@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllConversations } from '@/lib/store-adapter';
-import { getAllBankingConversations } from '@/lib/banking-store';
 import { getConversationsByIndustry, type Industry } from '@/lib/sample-data';
 
 /**
@@ -18,86 +17,6 @@ export async function GET(request: NextRequest) {
     const useSupabase = process.env.USE_SUPABASE === 'true';
     console.log('🔧 Using Supabase:', useSupabase);
     
-    // For banking industry, use banking-specific store
-    if (industry === 'banking' && useSupabase) {
-      try {
-        console.log('🏦 Fetching banking conversations...');
-        const bankingConversations = await getAllBankingConversations();
-        console.log(`✅ Fetched ${bankingConversations.length} banking conversations`);
-
-        // Serialize Date objects to ISO strings for JSON response
-        // Use JSON.parse(JSON.stringify()) to handle all Date objects recursively
-        const serializedConversations = bankingConversations.map(conv => {
-          // Convert all Date objects to ISO strings
-          const serialized = {
-            ...conv,
-            lastMessageTime: conv.lastMessageTime instanceof Date
-              ? conv.lastMessageTime.toISOString()
-              : typeof conv.lastMessageTime === 'string'
-                ? conv.lastMessageTime
-                : new Date(conv.lastMessageTime).toISOString(),
-            startTime: conv.startTime instanceof Date
-              ? conv.startTime.toISOString()
-              : typeof conv.startTime === 'string'
-                ? conv.startTime
-                : new Date(conv.startTime).toISOString(),
-            sla: {
-              ...conv.sla,
-              deadline: conv.sla.deadline instanceof Date
-                ? conv.sla.deadline.toISOString()
-                : typeof conv.sla.deadline === 'string'
-                  ? conv.sla.deadline
-                  : new Date(conv.sla.deadline).toISOString(),
-            },
-            messages: conv.messages?.map((msg: any) => ({
-              ...msg,
-              timestamp: msg.timestamp instanceof Date
-                ? msg.timestamp.toISOString()
-                : typeof msg.timestamp === 'string'
-                  ? msg.timestamp
-                  : new Date(msg.timestamp).toISOString(),
-            })) || [],
-          };
-          return serialized;
-        });
-
-        // Test JSON serialization before sending
-        try {
-          JSON.stringify(serializedConversations);
-        } catch (serializeError: any) {
-          console.error('JSON serialization error:', serializeError);
-          console.error('Problematic conversation:', serializeError.message);
-          // Return empty array if serialization fails
-          return NextResponse.json({
-            success: true,
-            conversations: [],
-            count: 0,
-            storedCount: 0,
-            error: 'Serialization error',
-          });
-        }
-
-        return NextResponse.json({
-          success: true,
-          conversations: serializedConversations,
-          count: serializedConversations.length,
-          storedCount: serializedConversations.length,
-        });
-      } catch (error: any) {
-        console.error('❌ Error fetching banking conversations:', error);
-        console.error('Error name:', error?.name);
-        console.error('Error message:', error?.message);
-        console.error('Error stack:', error?.stack);
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to fetch banking conversations',
-          message: error?.message || 'Unknown error',
-          conversations: [],
-          count: 0,
-        }, { status: 500 });
-      }
-    }
-
     // Get stored conversations from data store (Supabase or in-memory)
     // If using Supabase and industry is specified, filter at database level
     // If industry is null/undefined, get all conversations (including those without industry)
@@ -122,22 +41,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For all industries, also include banking conversations if they exist
     let allConversations = [...conversations];
-
-    if (useSupabase) {
-      try {
-        console.log('🏦 Also fetching banking conversations for all industries...');
-        const bankingConversations = await getAllBankingConversations();
-        console.log(`✅ Also fetched ${bankingConversations.length} banking conversations`);
-
-        // Add banking conversations to the list
-        allConversations = [...conversations, ...bankingConversations];
-      } catch (bankingError: any) {
-        console.warn('⚠️ Failed to fetch banking conversations, continuing with regular conversations:', bankingError?.message);
-        // Continue with just regular conversations
-      }
-    }
 
     // Sort by last message time (most recent first)
     allConversations.sort((a, b) => {
