@@ -42,8 +42,7 @@ import { useRouter } from "next/navigation"
 import type { CallAnalysisRow } from "@/lib/automation/types"
 import { useConversationMessages } from "@/lib/hooks/useConversationMessages"
 import type { DbMessage } from "@/lib/types"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
+import { MessageContent } from "@/components/ui/message-content"
 
 const channelIcons = {
   voice: Phone,
@@ -275,12 +274,7 @@ export function ConversationPanel({ conversation, onOpenDrawer, onDelete }: Conv
                 <span className="text-xs text-muted-foreground">Voice Transcript</span>
               </div>
             )}
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              className="text-sm leading-relaxed whitespace-pre-wrap [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_td]:border [&_th]:px-2 [&_td]:px-2 [&_th]:py-1 [&_td]:py-1"
-            >
-              {msg.content}
-            </ReactMarkdown>
+            <MessageContent content={msg.content} />
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-muted-foreground">{formatTime(msg.timestamp)}</span>

@@ -192,7 +192,7 @@ export function AppSidebar() {
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                effectiveCollapsed ? "justify-center px-3" : "justify-start px-3"
+                effectiveCollapsed ? "justify-center px-2" : "justify-start px-3"
               )}
               title={effectiveCollapsed ? item.name : undefined}
             >
