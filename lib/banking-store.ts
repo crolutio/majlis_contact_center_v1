@@ -710,10 +710,37 @@ export async function updateBankingConversation(
   if (updates.topic) updateData.topic = updates.topic;
   if (updates.sentiment) updateData.sentiment = updates.sentiment;
 
+  // Update cc_conversations table
   await supabase
     .from('cc_conversations')
     .update(updateData)
     .eq('id', id);
+
+  // Also update unified conversations table for Digital Channels
+  const unifiedUpdateData: any = {};
+  if (updates.status) {
+    // Map banking status to unified status
+    if (updates.status === 'escalated') {
+      unifiedUpdateData.status = 'active';
+      unifiedUpdateData.escalation_risk = true;
+    } else {
+      unifiedUpdateData.status = updates.status;
+    }
+  }
+  if (updates.priority) unifiedUpdateData.priority = updates.priority;
+  if (updates.topic) unifiedUpdateData.topic = updates.topic;
+  if (updates.sentiment) unifiedUpdateData.sentiment = updates.sentiment;
+
+  if (Object.keys(unifiedUpdateData).length > 0) {
+    try {
+      await supabase
+        .from('conversations')
+        .update(unifiedUpdateData)
+        .eq('id', id);
+    } catch (e) {
+      console.warn('⚠️ Failed to update unified conversation:', e);
+    }
+  }
 }
 
 /**

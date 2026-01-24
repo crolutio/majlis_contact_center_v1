@@ -114,7 +114,7 @@ export function AppSidebar() {
 
     const timer = setTimeout(() => {
       setIsCollapsed(true)
-    }, 3000)
+    }, 1500)
 
     return () => clearTimeout(timer)
   }, [isDropdownOpen])
@@ -133,7 +133,7 @@ export function AppSidebar() {
 
   return (
     <aside
-      className={`bg-sidebar text-sidebar-foreground flex flex-col h-screen border-r border-sidebar-border transition-all duration-300 ease-in-out ${
+      className={`bg-sidebar text-sidebar-foreground flex flex-col h-screen border-r border-sidebar-border transition-all duration-200 ease-in-out ${
         effectiveCollapsed ? 'w-16' : 'w-64'
       }`}
       onMouseEnter={() => setIsHovered(true)}
@@ -167,7 +167,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto transition-all duration-300">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto transition-all duration-200">
         {(user.role === "back_office"
           ? backOfficeNavigation
           : user.role === "agent"
@@ -192,7 +192,7 @@ export function AppSidebar() {
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                effectiveCollapsed ? "justify-center px-2" : "justify-start px-3"
+                effectiveCollapsed ? "justify-center px-1" : "justify-start px-3"
               )}
               title={effectiveCollapsed ? item.name : undefined}
             >

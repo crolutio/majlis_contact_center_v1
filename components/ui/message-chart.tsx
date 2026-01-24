@@ -133,11 +133,23 @@ export function MessageChart({ chartData, className }: MessageChartProps) {
 
 // Function to parse chart data from message content
 export function parseChartFromContent(content: string): { chartData: ChartData | null; remainingContent: string } {
-  // Look for chart blocks in the content
-  const chartRegex = /chart\s*(\{[\s\S]*?\})/i
+  // Look for chart blocks in the content - more robust regex for multiline JSON
+  const chartRegex = /chart\s*(\{[\s\S]*?\n\})/i
   const match = content.match(chartRegex)
 
   if (!match) {
+    // Try alternative format without the "chart" prefix (just JSON)
+    const jsonRegex = /(\{[\s\S]*?"type"\s*:\s*"pie"[\s\S]*?\n\})/i
+    const jsonMatch = content.match(jsonRegex)
+    if (jsonMatch) {
+      try {
+        const chartData: ChartData = JSON.parse(jsonMatch[1])
+        const remainingContent = content.replace(jsonRegex, '').trim()
+        return { chartData, remainingContent }
+      } catch (error) {
+        console.error('Failed to parse JSON chart data:', error)
+      }
+    }
     return { chartData: null, remainingContent: content }
   }
 

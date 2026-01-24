@@ -13,6 +13,11 @@ interface MessageContentProps {
 export function MessageContent({ content, className }: MessageContentProps) {
   const { chartData, remainingContent } = parseChartFromContent(content)
 
+  // Debug logging
+  if (chartData) {
+    console.log('🎨 Rendering chart:', chartData)
+  }
+
   return (
     <div className={className}>
       {/* Render chart if found */}
