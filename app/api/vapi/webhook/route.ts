@@ -299,11 +299,11 @@ async function resolveVoiceConversationFromVapiCall(call: any): Promise<{
   try {
     const { supabaseServer } = await import('@/lib/supabase-server');
     const { data: marker } = await supabaseServer
-      .from('cc_messages')
+      .from('messages')
       .select('conversation_id,provider_message_id')
       .eq('channel', 'voice')
-      .eq('direction', 'inbound')
-      .eq('body_text', '[Call started]')
+      .eq('sender_type', 'system')
+      .eq('content', '[Call started]')
       .eq('from_address', from)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -722,7 +722,7 @@ async function handleTranscript(call: any, body: any) {
 
   const { appendVoiceTranscriptTurn, writeAuditLog } = await import('@/lib/banking-store');
 
-  // Append canonical transcript + mirror into cc_messages for UI
+  // Append canonical transcript + mirror into messages for UI
   const direction = speaker === 'customer' ? 'inbound' : 'outbound';
   const mirrorFrom = direction === 'inbound' ? from : to;
   const mirrorTo = direction === 'inbound' ? to : from;

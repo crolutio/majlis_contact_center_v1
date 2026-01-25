@@ -20,50 +20,6 @@ function isLikelyCloudflareHtmlError(message: any): boolean {
   return m.includes('<html') && (m.includes('cloudflare') || m.includes('bad gateway') || m.includes('error code'));
 }
 
-async function mirrorBankingMessageToCore(params: {
-  conversationId: string;
-  direction: 'inbound' | 'outbound';
-  content: string;
-  timestamp: Date;
-  channel: string;
-  provider: string;
-  providerMessageId: string;
-  fromAddress?: string | null;
-  toAddress?: string | null;
-  status?: string | null;
-  metadata?: any;
-}) {
-  try {
-    const existing = await supabase
-      .from('messages')
-      .select('id')
-      .eq('provider', params.provider)
-      .eq('provider_message_id', params.providerMessageId)
-      .maybeSingle();
-
-    if (existing?.data?.id) return;
-
-    await supabase
-      .from('messages')
-      .insert({
-        conversation_id: params.conversationId,
-        sender_type: params.direction === 'inbound' ? 'customer' : 'agent',
-        content: params.content,
-        created_at: params.timestamp.toISOString(),
-        source: 'banking',
-        channel: params.channel,
-        provider: params.provider,
-        provider_message_id: params.providerMessageId,
-        from_address: params.fromAddress || null,
-        to_address: params.toAddress || null,
-        status: params.status || null,
-        metadata: params.metadata || null,
-      });
-  } catch (error) {
-    console.warn('⚠️ Failed to mirror message to core messages:', error);
-  }
-}
-
 /**
  * Get all banking conversations from unified conversations table
  */
@@ -370,7 +326,7 @@ export async function createBankingConversationFromMessage(
 
     // Step 1: Check for existing message (idempotency)
     const { data: existingMessage } = await supabase
-      .from('cc_messages')
+      .from('messages')
       .select('id, conversation_id')
       .eq('provider', provider)
       .eq('provider_message_id', message.messageSid)
@@ -379,19 +335,6 @@ export async function createBankingConversationFromMessage(
     if (existingMessage) {
       // Message already exists - return existing conversation (idempotent retry)
       console.log('🔄 Message already exists (idempotent retry):', message.messageSid);
-      await mirrorBankingMessageToCore({
-        conversationId: existingMessage.conversation_id,
-        direction: 'inbound',
-        content: message.body || '',
-        timestamp: message.timestamp,
-        channel: message.channel,
-        provider,
-        providerMessageId: message.messageSid,
-        fromAddress: message.fromAddress,
-        toAddress: message.toAddress,
-        status: 'received',
-        metadata: message.bodyJson || null,
-      });
       return {
         conversationId: existingMessage.conversation_id,
         messageId: existingMessage.id,
@@ -556,27 +499,24 @@ export async function createBankingConversationFromMessage(
       messageSid: message.messageSid,
     });
 
-    // Build insert object - handle both old schema (text) and new schema (body_text)
+    // Build insert object for core messages
     const messageInsert: any = {
       conversation_id: conversationId,
-      direction: 'inbound',
+      sender_type: 'customer',
+      content: bodyText,
+      created_at: message.timestamp.toISOString(),
+      source: 'banking',
       channel: message.channel,
-      provider: provider,
+      provider,
       provider_message_id: message.messageSid,
       from_address: normalizedFromForMessage, // Normalized address (e.g., whatsapp:+1234567890)
       to_address: normalizedToForMessage, // Normalized address (e.g., whatsapp:+1234567890)
-      body_text: bodyText, // New schema
-      body_json: bodyJson,
       status: 'received',
-      created_at: message.timestamp.toISOString(),
+      metadata: bodyJson,
     };
-    
-    // IMPORTANT:
-    // In this repo/migration set, `cc_messages.text` was renamed to `body_text` (migration 006).
-    // Writing `text` causes PostgREST schema-cache errors (PGRST204), so do NOT include it.
 
     const { data: messageData, error: messageError } = await supabase
-      .from('cc_messages')
+      .from('messages')
       .insert(messageInsert)
       .select('id')
       .single();
@@ -587,7 +527,7 @@ export async function createBankingConversationFromMessage(
         console.log('🔄 Message already exists (race condition):', message.messageSid);
         // Message was inserted by another request - fetch it
         const { data: existing } = await supabase
-          .from('cc_messages')
+          .from('messages')
           .select('id, conversation_id')
           .eq('provider', provider)
           .eq('provider_message_id', message.messageSid)
@@ -624,20 +564,6 @@ export async function createBankingConversationFromMessage(
       to_address: normalizedToForMessage,
     });
 
-    await mirrorBankingMessageToCore({
-      conversationId,
-      direction: 'inbound',
-      content: bodyText,
-      timestamp: message.timestamp,
-      channel: message.channel,
-      provider,
-      providerMessageId: message.messageSid,
-      fromAddress: normalizedFromForMessage,
-      toAddress: normalizedToForMessage,
-      status: 'received',
-      metadata: bodyJson,
-    });
-
     return {
       conversationId,
       messageId: messageData.id,
@@ -659,28 +585,19 @@ export async function storeBankingAIResponse(
 ): Promise<void> {
   const providerMessageId = providerMsgId || `ai-${Date.now()}`;
   await supabase
-    .from('cc_messages')
+    .from('messages')
     .insert({
       conversation_id: conversationId,
-      direction: 'outbound',
-      channel: 'whatsapp', // Default, can be updated
-      provider: 'twilio',
-      body_text: response,
+      sender_type: 'ai',
+      content: response,
+      created_at: new Date().toISOString(),
+      source: 'banking',
+      channel: 'chat',
+      provider: 'app',
       provider_message_id: providerMessageId,
       status: 'sent',
-      created_at: new Date().toISOString(),
+      metadata: { kind: 'ai_response' },
     });
-
-  await mirrorBankingMessageToCore({
-    conversationId,
-    direction: 'outbound',
-    content: response,
-    timestamp: new Date(),
-    channel: 'whatsapp',
-    provider: 'twilio',
-    providerMessageId,
-    status: 'sent',
-  });
 
   await supabase
     .from('conversations')
@@ -881,10 +798,9 @@ export async function createBankingConversationFromVoiceCall(params: {
     // (helps fix older rows where provider/provider_conversation_id were left NULL).
     try {
       const { data: marker } = await supabase
-        .from('cc_messages')
+        .from('messages')
         .select('conversation_id')
         .eq('channel', 'voice')
-        .eq('direction', 'inbound')
         .eq('provider_message_id', `CALL-${callSid}-START`)
         .limit(1)
         .maybeSingle();
@@ -968,26 +884,27 @@ export async function createBankingConversationFromVoiceCall(params: {
       return null;
     }
 
-    // D) Store a lightweight "call started" inbound message for UI continuity (optional)
+    // D) Store a lightweight "call started" system message for UI continuity (optional)
     // Use provider_message_id namespace to keep uniqueness.
     try {
-      await supabase.from('cc_messages').insert({
+      await supabase.from('messages').insert({
         conversation_id: created.id,
-        direction: 'inbound',
+        sender_type: 'system',
+        content: '[Call started]',
+        created_at: openedAt,
+        source: 'banking',
         channel: 'voice',
         provider,
         provider_message_id: `CALL-${callSid}-START`,
         from_address: fromAddress,
         to_address: toAddress,
-        body_text: '[Call started]',
-        body_json: {
+        status: 'received',
+        metadata: {
           kind: 'call_started',
           callSid,
           provider,
           provider_conversation_id: callSid,
         },
-        status: 'received',
-        created_at: openedAt,
       });
     } catch {
       // Non-fatal
@@ -1002,7 +919,7 @@ export async function createBankingConversationFromVoiceCall(params: {
 
 /**
  * Step 9 (voice): Append a transcript turn (canonical `cc_call_transcripts`),
- * and optionally mirror into `cc_messages` for inbox UI.
+ * and optionally mirror into `messages` for inbox UI.
  *
  * Returns `{ transcriptId, messageId? }`.
  */
@@ -1019,7 +936,7 @@ export async function appendVoiceTranscriptTurn(params: {
   startMs?: number;
   endMs?: number;
 
-  // Mirroring into cc_messages
+  // Mirroring into messages
   mirrorToMessages?: boolean;
   fromAddress?: string; // +E164 caller (for inbound) or your number (for outbound)
   toAddress?: string;
@@ -1184,7 +1101,7 @@ export async function appendVoiceTranscriptTurn(params: {
     context: 'webhook',
   });
 
-  // B) Optional mirror into cc_messages (for unified inbox timeline)
+  // B) Optional mirror into messages (for unified inbox timeline)
   let messageId: string | null = null;
   if (mirrorToMessages) {
     const providerMessageId =
@@ -1194,7 +1111,7 @@ export async function appendVoiceTranscriptTurn(params: {
 
     try {
       const { data: existingMsg } = await supabase
-        .from('cc_messages')
+        .from('messages')
         .select('id')
         .eq('provider', provider)
         .eq('provider_message_id', providerMessageId)
@@ -1204,17 +1121,27 @@ export async function appendVoiceTranscriptTurn(params: {
         messageId = existingMsg.id;
       } else {
         const { data: msgRow } = await supabase
-          .from('cc_messages')
+          .from('messages')
           .insert({
             conversation_id: conversationId,
-            direction: direction || (speaker === 'customer' ? 'inbound' : 'outbound'),
+            sender_type:
+              speaker === 'customer'
+                ? 'customer'
+                : speaker === 'ai'
+                  ? 'ai'
+                  : speaker === 'agent'
+                    ? 'agent'
+                    : 'system',
+            content: text,
+            created_at: occurredAtIso,
+            source: 'banking',
             channel: 'voice',
             provider,
             provider_message_id: providerMessageId,
             from_address: fromAddress || null,
             to_address: toAddress || null,
-            body_text: text,
-            body_json: {
+            status: 'received',
+            metadata: {
               is_transcript: true,
               speaker,
               provider_turn_id: providerTurnId || null,
@@ -1223,9 +1150,8 @@ export async function appendVoiceTranscriptTurn(params: {
               confidence: confidence ?? null,
               start_ms: startMs ?? null,
               end_ms: endMs ?? null,
+              direction: direction || (speaker === 'customer' ? 'inbound' : 'outbound'),
             },
-            status: 'received',
-            created_at: occurredAtIso,
           })
           .select('id')
           .single();
@@ -1233,7 +1159,7 @@ export async function appendVoiceTranscriptTurn(params: {
         messageId = msgRow?.id || null;
       }
     } catch (e) {
-      console.warn('appendVoiceTranscriptTurn: failed to mirror into cc_messages', e);
+      console.warn('appendVoiceTranscriptTurn: failed to mirror into messages', e);
     }
   }
 

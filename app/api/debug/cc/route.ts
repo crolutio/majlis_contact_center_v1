@@ -15,10 +15,10 @@ export async function GET() {
       latestConvRes,
     ] = await Promise.all([
       supabaseServer.from('conversations').select('id', { count: 'exact', head: true }),
-      supabaseServer.from('cc_messages').select('id', { count: 'exact', head: true }),
+      supabaseServer.from('messages').select('id', { count: 'exact', head: true }),
       supabaseServer.from('cc_identity_links').select('id', { count: 'exact', head: true }),
       supabaseServer
-        .from('cc_messages')
+        .from('messages')
         .select('id, provider, provider_message_id, channel, from_address, to_address, created_at')
         .order('created_at', { ascending: false })
         .limit(3),
@@ -56,7 +56,7 @@ export async function GET() {
       success: true,
       counts: {
         conversations: conversationsRes.count ?? null,
-        cc_messages: messagesRes.count ?? null,
+        messages: messagesRes.count ?? null,
         cc_identity_links: identityLinksRes.count ?? null,
       },
       latest: {

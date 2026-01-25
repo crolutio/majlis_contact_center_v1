@@ -205,30 +205,30 @@ async function loadContext(state: SupervisorState): Promise<Partial<SupervisorSt
     // Load conversation-scoped auth_level from cc_auth_sessions
     const authLevel = await getConversationAuthLevel(state.conversation_id);
 
-    // Step 8: Load pending_action from latest outbound cc_messages row (persisted across runs)
+    // Step 8: Load pending_action from latest outbound messages row (persisted across runs)
     let pendingAction: string | undefined;
     try {
       const { data: latestOutbound } = await supabaseServer
-        .from("cc_messages")
-        .select("body_json,body_text,created_at")
+        .from("messages")
+        .select("metadata,content,created_at")
         .eq("conversation_id", state.conversation_id)
-        .eq("direction", "outbound")
+        .in("sender_type", ["agent", "ai", "system"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const pendingFromJson = (latestOutbound as any)?.body_json?.pending_action as string | undefined;
+      const pendingFromJson = (latestOutbound as any)?.metadata?.pending_action as string | undefined;
       if (pendingFromJson) {
         pendingAction = pendingFromJson;
       } else {
-        const lastOutboundText = ((latestOutbound as any)?.body_text || "").toLowerCase();
+        const lastOutboundText = ((latestOutbound as any)?.content || "").toLowerCase();
         if (lastOutboundText.includes("would you like me to freeze your card")) {
           pendingAction = "freeze_card_prompted";
         }
       }
     } catch (e) {
       // Non-fatal: fall back to message-based inference only
-      console.warn("⚠️ [load_context] Failed to load pending_action from cc_messages:", e);
+      console.warn("⚠️ [load_context] Failed to load pending_action from messages:", e);
     }
 
     // Audit
@@ -1573,7 +1573,7 @@ async function formatResponse(state: SupervisorState): Promise<Partial<Superviso
 
 /**
  * Node 8: persist_and_send
- * Insert outbound row into cc_messages and send via Twilio
+ * Insert outbound row into messages and send via Twilio
  */
 async function persistAndSend(state: SupervisorState): Promise<Partial<SupervisorState>> {
   try {
@@ -1598,7 +1598,7 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
 
     // Idempotency per inbound message_id
     const { data: existingMessage } = await supabaseServer
-      .from("cc_messages")
+      .from("messages")
       .select("id")
       .eq("provider", providerForSend)
       .eq("provider_message_id", outboundProviderMessageId)
@@ -1619,10 +1619,10 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
 
     // Use last inbound message for addressing
     const { data: latestInboundMessage } = await supabaseServer
-      .from("cc_messages")
+      .from("messages")
       .select("from_address,to_address")
       .eq("conversation_id", state.conversation_id)
-      .eq("direction", "inbound")
+      .eq("sender_type", "customer")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -1635,35 +1635,6 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
     const fromAddress = inboundTo;
 
     const sentAt = new Date().toISOString();
-    const { data: messageData, error: insertError } = await supabaseServer
-      .from("cc_messages")
-      .insert({
-        conversation_id: state.conversation_id,
-        direction: "outbound",
-        channel: state.channel,
-        provider: providerForSend,
-        provider_message_id: outboundProviderMessageId,
-        from_address: fromAddress,
-        to_address: toAddress,
-        body_text: state.formatted_response,
-        body_json: {
-          content_hash: contentHash,
-          in_reply_to_message_id: state.message_id,
-          intent: state.intent,
-          disposition_code: state.disposition_code,
-          voice_provider_call_id: state.voice_provider_call_id,
-          // Step 8: Persist follow-up state for next inbound message
-          pending_action: state.pending_action,
-          case_id: state.case_id,
-        },
-        status: "sent",
-        created_at: sentAt,
-      })
-      .select("id")
-      .single();
-
-    if (insertError) throw insertError;
-
     await supabaseServer.from("messages").insert({
       conversation_id: state.conversation_id,
       sender_type: "agent",
@@ -1684,6 +1655,7 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
         voice_provider_call_id: state.voice_provider_call_id,
         pending_action: state.pending_action,
         case_id: state.case_id,
+        direction: "outbound",
       },
     });
 

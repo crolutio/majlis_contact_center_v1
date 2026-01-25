@@ -6,7 +6,7 @@ type SmsMessageRow = {
   created_at: string
   from_address: string | null
   to_address: string | null
-  body_text: string
+  content: string
   provider: string | null
   provider_message_id: string | null
 }
@@ -100,8 +100,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const { data, error } = await supabaseServer
-      .from("cc_messages")
-      .select("id,created_at,from_address,to_address,body_text,provider,provider_message_id")
+      .from("messages")
+      .select("id,created_at,from_address,to_address,content,provider,provider_message_id")
       .eq("channel", "sms")
       .order("created_at", { ascending: false })
       .limit(25)
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     const rows = (data || []) as SmsMessageRow[]
     const recentCodes = rows
-      .flatMap((r) => extractVerificationCodes(r.body_text || ""))
+      .flatMap((r) => extractVerificationCodes(r.content || ""))
       .slice(0, 10)
 
     return NextResponse.json({
