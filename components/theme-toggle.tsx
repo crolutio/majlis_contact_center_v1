@@ -26,10 +26,10 @@ export function ThemeToggle({ onOpenChange }: ThemeToggleProps = {}) {
   }
 
   React.useEffect(() => {
-    return () => {
-      onOpenChange?.(false)
-    }
-  }, [onOpenChange])
+    // Close dropdown and allow sidebar to collapse after theme change
+    setOpen(false)
+    onOpenChange?.(false)
+  }, [theme, onOpenChange])
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
