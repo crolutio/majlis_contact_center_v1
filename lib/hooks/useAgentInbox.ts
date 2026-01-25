@@ -104,9 +104,14 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
             // PERFORMANCE: Messages loaded separately when viewing conversation detail
             messages: [],
             aiConfidence: 0.8,
-            escalationRisk: false,
+            escalationRisk: conv.escalation_risk || false,
             tags: [],
             industry: 'banking',
+            metadata: {
+              source: conv.source || conv.industry || 'default',
+              handlingMode: conv.handling_mode || null,
+              handoverRequired: conv.handover_required ?? null,
+            },
           };
         });
 
@@ -159,6 +164,15 @@ export function useAgentInbox(agentId: string | null): UseAgentInboxReturn {
                   lastMessageTime: new Date(updatedConversation.last_message_time || conv.lastMessageTime),
                   assignedTo: updatedConversation.assigned_to || conv.assignedTo,
                   escalationRisk: updatedConversation.escalation_risk || conv.escalationRisk,
+                  metadata: {
+                    ...(conv.metadata || {}),
+                    source: updatedConversation.source || conv.metadata?.source || 'default',
+                    handlingMode: updatedConversation.handling_mode || conv.metadata?.handlingMode || null,
+                    handoverRequired:
+                      updatedConversation.handover_required ??
+                      conv.metadata?.handoverRequired ??
+                      null,
+                  },
                   // Update other fields as needed
                 };
 

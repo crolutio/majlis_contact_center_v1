@@ -16,8 +16,16 @@ export function getHandlingStatus(conversation: Conversation): HandlingStatus {
     return 'human-handled';
   }
 
-  // Human-handling needed: escalated, has escalation risk, or is active (has agent interaction)
-  if (conversation.escalationRisk || conversation.status === 'escalated' || conversation.status === 'active') {
+  const handlingMode = conversation.metadata?.handlingMode;
+  const handoverRequired = Boolean(conversation.metadata?.handoverRequired);
+
+  // Human-handling needed: explicitly escalated or handover requested
+  if (
+    conversation.escalationRisk ||
+    conversation.status === 'escalated' ||
+    handlingMode === 'human' ||
+    handoverRequired
+  ) {
     return 'human-handling-needed';
   }
 
