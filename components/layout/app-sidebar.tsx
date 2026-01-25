@@ -140,37 +140,39 @@ export function AppSidebar() {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <div className={cn("flex items-center w-full", effectiveCollapsed ? "justify-center" : "justify-between")}>
+      <div className="h-16 flex items-center border-b border-sidebar-border">
+        <div className="flex items-center w-full">
           <Link
             href={user.role === "admin" ? "/agent-builder" : user.role === "agent" ? "/chat-agent" : user.role === "call_agent" ? "/call-agent" : user.role === "back_office" ? "/back-office" : "/inbox"}
-            className={cn("flex items-center gap-2", effectiveCollapsed && "justify-center")}
+            className="flex items-center min-w-0"
           >
-            <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-              <MajlisConnectLogo className="w-5 h-5 text-sidebar-primary-foreground" />
+            <div className="w-[84px] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                <MajlisConnectLogo className="w-5 h-5 text-sidebar-primary-foreground" />
+              </div>
             </div>
-            <span className={cn(
-              "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap",
-              effectiveCollapsed
-                ? "w-0 opacity-0"
-                : "w-auto opacity-100"
-            )}>
+            <span
+              className={cn(
+                "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap",
+                effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              )}
+            >
               Majlis Connect
             </span>
           </Link>
-          <div className={cn(
-            "transition-all duration-200 ease-in-out overflow-hidden",
-            effectiveCollapsed
-              ? "w-0 opacity-0"
-              : "w-auto opacity-100"
-          )}>
+          <div
+            className={cn(
+              "ml-auto pr-4 transition-all duration-200 ease-in-out overflow-hidden",
+              effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+            )}
+          >
             <ThemeToggle onOpenChange={setIsDropdownOpen} />
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden min-w-0">
+      <nav className="flex-1 py-4 space-y-1 overflow-y-auto overflow-x-hidden min-w-0">
         {(user.role === "back_office"
           ? backOfficeNavigation
           : user.role === "agent"
@@ -191,37 +193,33 @@ export function AppSidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 overflow-hidden min-w-0",
+                "flex items-center w-full py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 overflow-hidden min-w-0",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                "justify-start flex-nowrap",
-                effectiveCollapsed ? "gap-0" : "gap-3"
+                "justify-start flex-nowrap"
               )}
               title={effectiveCollapsed ? item.name : undefined}
             >
-              <div className={cn(
-                "w-8 h-8 flex items-center justify-center flex-shrink-0",
-                effectiveCollapsed && "mx-auto"
-              )}>
+              <div className="w-[84px] flex items-center justify-center flex-shrink-0">
                 <Icon className="w-5 h-5" />
               </div>
-              <span
+              <div
                 className={cn(
-                  "transition-opacity duration-150 ease-in-out overflow-hidden whitespace-nowrap",
-                  effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                  "flex items-center min-w-0 transition-opacity duration-150 ease-in-out overflow-hidden",
+                  effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 pr-3 gap-2"
                 )}
               >
-                {item.name}
-              </span>
-              {!effectiveCollapsed && item.name === "Inbox" && user.role !== "agent" && (
-                <Badge
-                  variant="secondary"
-                  className="ml-auto text-xs bg-sidebar-primary text-sidebar-primary-foreground transition-colors duration-200"
-                >
-                  12
-                </Badge>
-              )}
+                <span className="whitespace-nowrap truncate">{item.name}</span>
+                {item.name === "Inbox" && user.role !== "agent" && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto text-xs bg-sidebar-primary text-sidebar-primary-foreground transition-colors duration-200"
+                  >
+                    12
+                  </Badge>
+                )}
+              </div>
             </Link>
           )
         })}
@@ -231,34 +229,36 @@ export function AppSidebar() {
       <div className="p-3 border-t border-sidebar-border">
         <DropdownMenu open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <button className={cn(
-              "w-full flex items-center px-3 py-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors duration-200 overflow-hidden min-w-0",
-              effectiveCollapsed ? "gap-0 justify-center" : "gap-3"
-            )}>
-              <Avatar className={cn(
-                "h-8 w-8 flex-shrink-0",
-                effectiveCollapsed && "mx-auto"
-              )}>
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                <AvatarFallback>
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-              {!effectiveCollapsed && (
+            <button
+              className={cn(
+                "w-full flex items-center py-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors duration-200 overflow-hidden min-w-0"
+              )}
+            >
+              <div className="w-[84px] flex items-center justify-center flex-shrink-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback>
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div
+                className={cn(
+                  "flex items-center min-w-0 transition-opacity duration-150 overflow-hidden",
+                  effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100 flex-1 pr-3 gap-2"
+                )}
+              >
                 <div className="flex-1 text-left overflow-hidden">
                   <p className="text-sm font-medium truncate transition-all duration-200 whitespace-nowrap">{user.name}</p>
                   <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 transition-all duration-200", roleColors[user.role])}>
                     {roleLabels[user.role]}
                   </Badge>
                 </div>
-              )}
-              <ChevronDown className={cn(
-                "w-4 h-4 text-sidebar-foreground/50 transition-opacity duration-150",
-                effectiveCollapsed ? "opacity-0 w-0" : "opacity-100 w-4"
-              )} />
+                <ChevronDown className="w-4 h-4 text-sidebar-foreground/50 transition-opacity duration-150" />
+              </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" side="top">

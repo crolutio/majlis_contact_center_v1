@@ -1,10 +1,10 @@
 /**
  * Banking-specific data store
- * Works with cc_* tables for banking support
+ * Uses unified conversations/messages with cc_* audit tables
  */
 
 import { supabaseServer } from './supabase-server';
-import { Conversation, Message } from './sample-data';
+import { Conversation } from './sample-data';
 import { normalizeAddress } from './identity-resolution';
 
 // Use server client for all banking store operations (bypasses RLS)
@@ -20,27 +20,69 @@ function isLikelyCloudflareHtmlError(message: any): boolean {
   return m.includes('<html') && (m.includes('cloudflare') || m.includes('bad gateway') || m.includes('error code'));
 }
 
+async function mirrorBankingMessageToCore(params: {
+  conversationId: string;
+  direction: 'inbound' | 'outbound';
+  content: string;
+  timestamp: Date;
+  channel: string;
+  provider: string;
+  providerMessageId: string;
+  fromAddress?: string | null;
+  toAddress?: string | null;
+  status?: string | null;
+  metadata?: any;
+}) {
+  try {
+    const existing = await supabase
+      .from('messages')
+      .select('id')
+      .eq('provider', params.provider)
+      .eq('provider_message_id', params.providerMessageId)
+      .maybeSingle();
+
+    if (existing?.data?.id) return;
+
+    await supabase
+      .from('messages')
+      .insert({
+        conversation_id: params.conversationId,
+        sender_type: params.direction === 'inbound' ? 'customer' : 'agent',
+        content: params.content,
+        created_at: params.timestamp.toISOString(),
+        source: 'banking',
+        channel: params.channel,
+        provider: params.provider,
+        provider_message_id: params.providerMessageId,
+        from_address: params.fromAddress || null,
+        to_address: params.toAddress || null,
+        status: params.status || null,
+        metadata: params.metadata || null,
+      });
+  } catch (error) {
+    console.warn('⚠️ Failed to mirror message to core messages:', error);
+  }
+}
+
 /**
- * Get all banking conversations from cc_conversations table
+ * Get all banking conversations from unified conversations table
  */
 export async function getAllBankingConversations(): Promise<Conversation[]> {
   try {
-    console.log('🔍 Querying cc_conversations...');
-    // Supabase occasionally returns transient Cloudflare 5xx HTML error pages.
-    // Retrying makes the UI resilient without hiding real schema/query problems.
     let data: any = null;
     let error: any = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       const res = await supabase
-        .from('cc_conversations')
+        .from('conversations')
         .select(
           `
-        *,
-        bank_customer:cc_bank_customers(*),
-        messages:cc_messages(*)
-      `
+          *,
+          customer:customers(*),
+          agent:agents(*)
+        `
         )
-        .order('opened_at', { ascending: false });
+        .eq('industry', 'banking')
+        .order('last_message_time', { ascending: false });
 
       data = res.data;
       error = res.error;
@@ -60,132 +102,56 @@ export async function getAllBankingConversations(): Promise<Conversation[]> {
       await sleep(250 * attempt);
     }
 
-    if (error) {
-      return [];
-    }
-    
-    if (!data || data.length === 0) {
-      console.log('ℹ️ No banking conversations found in database');
-      return [];
-    }
-    
-    console.log(`✅ Found ${data.length} banking conversations`);
+    if (error || !data) return [];
 
-    try {
-      const mapped = data.map((conv: any) => {
-        const customer = conv.bank_customer;
-        // Filter out messages without created_at and sort safely
-        const messages = (conv.messages || [])
-          .filter((msg: any) => msg.created_at) // Only include messages with created_at
-          .sort((a: any, b: any) => {
-            try {
-              return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-            } catch {
-              return 0;
-            }
-          });
+    return data.map((conv: any) => {
+      const customerName =
+        conv.customer?.name ||
+        conv.customer?.email ||
+        conv.customer?.phone ||
+        'Unknown';
 
-        // Handle null/undefined dates safely
-        const openedAt = conv.opened_at ? new Date(conv.opened_at) : new Date();
-        const lastMessageCreatedAt = messages.length > 0 && messages[messages.length - 1].created_at
-          ? new Date(messages[messages.length - 1].created_at)
-          : openedAt;
-
-        const nameFromCustomer = customer
-          ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim()
-          : '';
-        const inboundAddress =
-          messages.find((msg: any) => msg.direction === 'inbound')?.from_address ||
-          messages.find((msg: any) => msg.direction === 'inbound')?.from ||
-          '';
-        const cleanedAddress = inboundAddress ? inboundAddress.replace(/^(whatsapp:|sms:|tel:)/i, '') : '';
-        const displayName =
-          nameFromCustomer ||
-          customer?.phone ||
-          customer?.email ||
-          cleanedAddress ||
-          'Unknown';
-
-        return {
-          id: conv.id,
-          customer: {
-            id: customer?.id || '',
-            name: displayName,
-            email: customer?.email || '',
-            phone: customer?.phone || '',
-            avatar: '/placeholder-user.jpg',
-            language: 'English',
-            preferredLanguage: 'en',
-            tier: (customer?.risk_level === 'high'
-              ? 'enterprise'
-              : customer?.risk_level === 'medium'
-              ? 'premium'
-              : 'standard') as Conversation['customer']['tier'],
-          },
-          channel: conv.channel || 'whatsapp',
-          status: conv.status || 'open',
-          priority: conv.priority || 'medium',
-          sentiment: conv.sentiment || 'neutral',
-          sentimentScore: 0.5, // Default if not available
-          sla: {
-            deadline: new Date(Date.now() + 30 * 60 * 1000), // Default SLA
-            remaining: 30,
-            status: 'healthy' as const,
-          },
-          assignedTo: conv.assigned_agent_id || null,
-          queue: conv.assigned_queue || 'General Support',
-          topic: conv.topic || '',
-          lastMessage: messages.length > 0 ? (messages[messages.length - 1].body_text || messages[messages.length - 1].text || '') : '',
-          lastMessageTime: lastMessageCreatedAt,
-          startTime: openedAt,
-          messages: messages.map((msg: any) => ({
-            id: msg.id,
-            type: msg.direction === 'inbound' ? 'customer' : (msg.direction === 'outbound' ? 'agent' : 'system'),
-            content: msg.body_text || msg.text || '',
-            timestamp: msg.created_at ? new Date(msg.created_at) : new Date(),
-            sentiment: undefined,
-            confidence: undefined,
-            isTranscript: false,
-          })),
-          aiConfidence: 0.85,
-          escalationRisk: conv.priority === 'urgent' || conv.status === 'escalated',
-          tags: [],
-          metadata: {
-            source: 'banking',
-            storage: 'cc',
-          },
-        };
-      });
-      
-      // Sort by last message time desc so active threads appear first
-      mapped.sort((a: Conversation, b: Conversation) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
-      return mapped;
-    } catch (mappingError: any) {
-      console.error('❌ Error mapping banking conversations:', mappingError);
-      console.error('Error name:', mappingError?.name);
-      console.error('Error message:', mappingError?.message);
-      console.error('Error stack:', mappingError?.stack);
-      // Try to serialize data safely (limit to first 2 items to avoid huge logs)
-      try {
-        const sampleData = data?.slice(0, 2).map((conv: any) => ({
-          id: conv.id,
-          opened_at: conv.opened_at,
-          channel: conv.channel,
-          status: conv.status,
-          has_customer: !!conv.bank_customer,
-          message_count: conv.messages?.length || 0,
-        }));
-        console.error('Sample conversation data:', JSON.stringify(sampleData, null, 2));
-      } catch (serializeError) {
-        console.error('Could not serialize conversation data for logging');
-      }
-      return [];
-    }
+      return {
+        id: conv.id,
+        customer: {
+          id: conv.customer?.id || '',
+          name: customerName,
+          email: conv.customer?.email || '',
+          phone: conv.customer?.phone || '',
+          avatar: conv.customer?.avatar || '/placeholder-user.jpg',
+          language: conv.customer?.language || 'English',
+          preferredLanguage: conv.customer?.preferred_language || 'en',
+          tier: conv.customer?.tier || 'standard',
+        },
+        channel: conv.channel || 'whatsapp',
+        status: conv.status || 'active',
+        priority: conv.priority || 'medium',
+        sentiment: conv.sentiment || 'neutral',
+        sentimentScore: conv.sentiment_score || 0.5,
+        sla: {
+          deadline: conv.sla_deadline ? new Date(conv.sla_deadline) : new Date(),
+          remaining: conv.sla_remaining || 0,
+          status: conv.sla_status || 'healthy',
+        },
+        assignedTo: conv.assigned_agent_id || conv.assigned_to || null,
+        queue: conv.queue || 'General Support',
+        topic: conv.topic || conv.subject || '',
+        lastMessage: conv.last_message || '',
+        lastMessageTime: new Date(conv.last_message_time || conv.updated_at || conv.created_at),
+        startTime: new Date(conv.start_time || conv.created_at),
+        messages: [],
+        aiConfidence: conv.ai_confidence || 0.85,
+        escalationRisk: conv.escalation_risk || false,
+        tags: conv.tags || [],
+        metadata: {
+          source: conv.source || 'banking',
+          storage: 'core',
+          handlingMode: conv.handling_mode || null,
+        },
+      };
+    });
   } catch (queryError: any) {
     console.error('❌ Error in getAllBankingConversations:', queryError);
-    console.error('Error name:', queryError?.name);
-    console.error('Error message:', queryError?.message);
-    console.error('Error stack:', queryError?.stack);
     return [];
   }
 }
@@ -195,65 +161,65 @@ export async function getAllBankingConversations(): Promise<Conversation[]> {
  */
 export async function getBankingConversation(id: string): Promise<Conversation | null> {
   const { data, error } = await supabase
-    .from('cc_conversations')
+    .from('conversations')
     .select(`
       *,
-      bank_customer:cc_bank_customers(*),
-      messages:cc_messages(*)
+      customer:customers(*),
+      messages:messages(*)
     `)
     .eq('id', id)
     .single();
 
   if (error || !data) return null;
 
-  const customer = data.bank_customer;
-  const messages = (data.messages || []).sort((a: any, b: any) => 
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  const messages = (data.messages || []).sort((a: any, b: any) =>
+    new Date(a.created_at || a.timestamp).getTime() - new Date(b.created_at || b.timestamp).getTime()
   );
 
   return {
     id: data.id,
     customer: {
-      id: customer?.id || '',
-      name: customer ? `${customer.first_name} ${customer.last_name}` : 'Unknown',
-      email: customer?.email || '',
-      phone: customer?.phone || '',
-      avatar: '/placeholder-user.jpg',
-      language: 'English',
-      preferredLanguage: 'en',
-      tier: customer?.risk_level === 'high' ? 'enterprise' : customer?.risk_level === 'medium' ? 'premium' : 'standard',
+      id: data.customer?.id || '',
+      name: data.customer?.name || 'Unknown',
+      email: data.customer?.email || '',
+      phone: data.customer?.phone || '',
+      avatar: data.customer?.avatar || '/placeholder-user.jpg',
+      language: data.customer?.language || 'English',
+      preferredLanguage: data.customer?.preferred_language || 'en',
+      tier: data.customer?.tier || 'standard',
     },
     channel: data.channel,
     status: data.status,
     priority: data.priority,
     sentiment: data.sentiment,
-    sentimentScore: 0.5,
+    sentimentScore: data.sentiment_score || 0.5,
     sla: {
-      deadline: new Date(Date.now() + 30 * 60 * 1000),
-      remaining: 30,
-      status: 'healthy' as const,
+      deadline: data.sla_deadline ? new Date(data.sla_deadline) : new Date(Date.now() + 30 * 60 * 1000),
+      remaining: data.sla_remaining || 30,
+      status: data.sla_status || 'healthy' as const,
     },
-      assignedTo: data.assigned_agent_id || null,
-      queue: data.assigned_queue || 'General Support',
-      topic: data.topic || '',
-      lastMessage: messages.length > 0 ? (messages[messages.length - 1].body_text || messages[messages.length - 1].text || '') : '',
-      lastMessageTime: messages.length > 0 ? new Date(messages[messages.length - 1].created_at) : new Date(data.opened_at),
-      startTime: new Date(data.opened_at),
-      messages: messages.map((msg: any) => ({
-        id: msg.id,
-        type: msg.direction === 'inbound' ? 'customer' : (msg.direction === 'outbound' ? 'agent' : 'system'),
-        content: msg.body_text || msg.text || '',
-        timestamp: new Date(msg.created_at),
-        sentiment: undefined,
-        confidence: undefined,
-        isTranscript: false,
-      })),
-    aiConfidence: 0.85,
-    escalationRisk: data.priority === 'urgent' || data.status === 'escalated',
-    tags: [],
+    assignedTo: data.assigned_agent_id || data.assigned_to || null,
+    queue: data.queue || 'General Support',
+    topic: data.topic || data.subject || '',
+    lastMessage: data.last_message || '',
+    lastMessageTime: new Date(data.last_message_time || data.updated_at || data.created_at),
+    startTime: new Date(data.start_time || data.created_at),
+    messages: messages.map((msg: any) => ({
+      id: msg.id,
+      type: msg.sender_type || msg.type,
+      content: msg.content,
+      timestamp: new Date(msg.created_at || msg.timestamp),
+      sentiment: msg.sentiment || undefined,
+      confidence: msg.confidence || undefined,
+      isTranscript: msg.is_transcript || false,
+    })),
+    aiConfidence: data.ai_confidence || 0.85,
+    escalationRisk: data.escalation_risk || false,
+    tags: data.tags || [],
     metadata: {
-      source: 'banking',
-      storage: 'cc',
+      source: data.source || 'banking',
+      storage: 'core',
+      handlingMode: data.handling_mode || null,
     },
   };
 }
@@ -413,6 +379,19 @@ export async function createBankingConversationFromMessage(
     if (existingMessage) {
       // Message already exists - return existing conversation (idempotent retry)
       console.log('🔄 Message already exists (idempotent retry):', message.messageSid);
+      await mirrorBankingMessageToCore({
+        conversationId: existingMessage.conversation_id,
+        direction: 'inbound',
+        content: message.body || '',
+        timestamp: message.timestamp,
+        channel: message.channel,
+        provider,
+        providerMessageId: message.messageSid,
+        fromAddress: message.fromAddress,
+        toAddress: message.toAddress,
+        status: 'received',
+        metadata: message.bodyJson || null,
+      });
       return {
         conversationId: existingMessage.conversation_id,
         messageId: existingMessage.id,
@@ -480,15 +459,17 @@ export async function createBankingConversationFromMessage(
       messageSid: message.messageSid,
     });
 
-    // Step 3: Check for existing active conversation
+    // Step 3: Check for existing active conversation (unified table)
     const { data: existingConversation } = await supabase
-      .from('cc_conversations')
-      .select('id')
-      .eq('bank_customer_id', customerId)
+      .from('conversations')
+      .select('id, status')
+      .eq('customer_id', customerId)
       .eq('channel', message.channel)
       .eq('provider', provider)
-      .in('status', ['open', 'pending', 'active', 'waiting'])
-      .order('opened_at', { ascending: false })
+      .eq('provider_conversation_id', message.from)
+      .eq('industry', 'banking')
+      .in('status', ['open', 'pending', 'active', 'waiting', 'escalated'])
+      .order('last_message_time', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -500,16 +481,12 @@ export async function createBankingConversationFromMessage(
       // Bump conversation activity so it surfaces in the inbox (order-by updated_at / last message time)
       try {
         await supabase
-          .from('cc_conversations')
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', conversationId);
-
-        // Also update the unified conversations table used by Digital Channels
-        await supabase
           .from('conversations')
           .update({
             last_message: message.body,
-            last_message_time: message.timestamp.toISOString()
+            last_message_time: message.timestamp.toISOString(),
+            updated_at: new Date().toISOString(),
+            ...(existingConversation.status === 'escalated' ? {} : { status: 'active' }),
           })
           .eq('id', conversationId);
       } catch (e) {
@@ -517,20 +494,33 @@ export async function createBankingConversationFromMessage(
         console.warn('⚠️ Failed to bump conversation timestamps:', e);
       }
     } else {
-      // Create new conversation
+      // Create new conversation (unified table)
       const { data, error } = await supabase
-        .from('cc_conversations')
+        .from('conversations')
         .insert({
+          customer_id: customerId,
           channel: message.channel,
-          provider: provider,
-          provider_conversation_id: message.from, // Use From address as thread key
-          status: 'open',
-          bank_customer_id: customerId,
-          opened_at: message.timestamp.toISOString(),
-          assigned_queue: 'General Support',
+          status: 'active',
           priority: 'medium',
-          topic: 'Incoming Message',
           sentiment: 'neutral',
+          sentiment_score: 0.5,
+          sla_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          sla_remaining: 30,
+          sla_status: 'healthy',
+          queue: 'General Support',
+          topic: 'Incoming Message',
+          last_message: message.body,
+          last_message_time: message.timestamp.toISOString(),
+          start_time: message.timestamp.toISOString(),
+          ai_confidence: 0.85,
+          escalation_risk: false,
+          tags: [],
+          source: 'banking',
+          industry: 'banking',
+          provider,
+          provider_conversation_id: message.from,
+          handling_mode: 'ai',
+          handover_required: false,
         })
         .select('id')
         .single();
@@ -541,29 +531,6 @@ export async function createBankingConversationFromMessage(
       }
       conversationId = data.id;
 
-      // Also create entry in unified conversations table for Digital Channels
-      try {
-        await supabase
-          .from('conversations')
-          .insert({
-            id: conversationId,
-            customer_id: customerId,
-            channel: message.channel,
-            status: 'active', // Map 'open' to 'active' for unified schema
-            priority: 'medium',
-            last_message: message.body,
-            last_message_time: message.timestamp.toISOString(),
-            start_time: message.timestamp.toISOString(),
-            source: 'banking',
-            industry: 'banking',
-            provider: provider,
-            provider_conversation_id: message.from,
-            topic: 'Incoming Message',
-            queue: 'General Support',
-          });
-      } catch (e) {
-        console.warn('⚠️ Failed to create unified conversation:', e);
-      }
     }
 
     // Step 4: Store message with all required fields
@@ -657,6 +624,20 @@ export async function createBankingConversationFromMessage(
       to_address: normalizedToForMessage,
     });
 
+    await mirrorBankingMessageToCore({
+      conversationId,
+      direction: 'inbound',
+      content: bodyText,
+      timestamp: message.timestamp,
+      channel: message.channel,
+      provider,
+      providerMessageId: message.messageSid,
+      fromAddress: normalizedFromForMessage,
+      toAddress: normalizedToForMessage,
+      status: 'received',
+      metadata: bodyJson,
+    });
+
     return {
       conversationId,
       messageId: messageData.id,
@@ -676,6 +657,7 @@ export async function storeBankingAIResponse(
   response: string,
   providerMsgId?: string
 ): Promise<void> {
+  const providerMessageId = providerMsgId || `ai-${Date.now()}`;
   await supabase
     .from('cc_messages')
     .insert({
@@ -684,10 +666,30 @@ export async function storeBankingAIResponse(
       channel: 'whatsapp', // Default, can be updated
       provider: 'twilio',
       body_text: response,
-      provider_message_id: providerMsgId || `ai-${Date.now()}`,
+      provider_message_id: providerMessageId,
       status: 'sent',
       created_at: new Date().toISOString(),
     });
+
+  await mirrorBankingMessageToCore({
+    conversationId,
+    direction: 'outbound',
+    content: response,
+    timestamp: new Date(),
+    channel: 'whatsapp',
+    provider: 'twilio',
+    providerMessageId,
+    status: 'sent',
+  });
+
+  await supabase
+    .from('conversations')
+    .update({
+      last_message: response,
+      last_message_time: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId);
 }
 
 /**
@@ -703,26 +705,13 @@ export async function updateBankingConversation(
     sentiment?: string;
   }
 ): Promise<void> {
-  const updateData: any = {};
-  if (updates.status) updateData.status = updates.status;
-  if (updates.priority) updateData.priority = updates.priority;
-  if (updates.assigned_queue) updateData.assigned_queue = updates.assigned_queue;
-  if (updates.topic) updateData.topic = updates.topic;
-  if (updates.sentiment) updateData.sentiment = updates.sentiment;
-
-  // Update cc_conversations table
-  await supabase
-    .from('cc_conversations')
-    .update(updateData)
-    .eq('id', id);
-
-  // Also update unified conversations table for Digital Channels
   const unifiedUpdateData: any = {};
   if (updates.status) {
-    // Map banking status to unified status
     if (updates.status === 'escalated') {
-      unifiedUpdateData.status = 'active';
+      unifiedUpdateData.status = 'escalated';
       unifiedUpdateData.escalation_risk = true;
+      unifiedUpdateData.handling_mode = 'human';
+      unifiedUpdateData.handover_required = true;
     } else {
       unifiedUpdateData.status = updates.status;
     }
@@ -730,6 +719,7 @@ export async function updateBankingConversation(
   if (updates.priority) unifiedUpdateData.priority = updates.priority;
   if (updates.topic) unifiedUpdateData.topic = updates.topic;
   if (updates.sentiment) unifiedUpdateData.sentiment = updates.sentiment;
+  if (updates.assigned_queue) unifiedUpdateData.queue = updates.assigned_queue;
 
   if (Object.keys(unifiedUpdateData).length > 0) {
     try {
@@ -738,7 +728,7 @@ export async function updateBankingConversation(
         .update(unifiedUpdateData)
         .eq('id', id);
     } catch (e) {
-      console.warn('⚠️ Failed to update unified conversation:', e);
+      console.warn('⚠️ Failed to update conversation:', e);
     }
   }
 }
@@ -747,9 +737,9 @@ export async function updateBankingConversation(
  * Delete banking conversation
  */
 export async function deleteBankingConversation(id: string): Promise<void> {
-  // Messages will be cascade deleted
+  // Messages will be cascade deleted via foreign key
   await supabase
-    .from('cc_conversations')
+    .from('conversations')
     .delete()
     .eq('id', id);
 }
@@ -820,9 +810,9 @@ export async function writeAuditLog(
 /**
  * Step 9 (voice): Create or find a voice conversation from an inbound Twilio call (idempotent).
  *
- * - Creates a cc_conversations row with:
+ * - Creates a conversations row with:
  *   channel='voice', provider='twilio', provider_conversation_id=<CallSid>
- * - Does NOT set bank_customer_id initially (banking-grade: verified/linked later)
+ * - Does NOT set customer_id initially (banking-grade: verified/linked later)
  * - Upserts cc_identity_links for voice address (+E164)
  */
 export async function createBankingConversationFromVoiceCall(params: {
@@ -902,7 +892,7 @@ export async function createBankingConversationFromVoiceCall(params: {
       const markerConversationId = (marker as any)?.conversation_id as string | undefined;
       if (markerConversationId) {
         await supabase
-          .from('cc_conversations')
+          .from('conversations')
           .update({
             provider,
             provider_conversation_id: callSid,
@@ -919,7 +909,7 @@ export async function createBankingConversationFromVoiceCall(params: {
     // C) Find conversation by (channel, provider_conversation_id) and ensure provider is set
     // IMPORTANT: Do NOT require provider match here, since older rows may have provider NULL.
     const { data: existingConv } = await supabase
-      .from('cc_conversations')
+      .from('conversations')
       .select('id,provider')
       .eq('channel', 'voice')
       .eq('provider_conversation_id', callSid)
@@ -928,7 +918,7 @@ export async function createBankingConversationFromVoiceCall(params: {
     if (existingConv?.id) {
       // Ensure provider fields are always present for voice
       await supabase
-        .from('cc_conversations')
+        .from('conversations')
         .update({
           provider: existingConv.provider || provider,
           provider_conversation_id: callSid,
@@ -944,20 +934,31 @@ export async function createBankingConversationFromVoiceCall(params: {
     const DEFAULT_AGENT_ID = "e66fa391-28b5-44ec-b3a9-4397c2f2d225";
     
     const { data: created, error } = await supabase
-      .from('cc_conversations')
+      .from('conversations')
       .insert({
+        customer_id: null,
         channel: 'voice',
+        status: 'active',
+        priority: 'medium',
+        sentiment: 'neutral',
+        sentiment_score: 0.5,
+        sla_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        sla_remaining: 30,
+        sla_status: 'healthy',
+        assigned_agent_id: DEFAULT_AGENT_ID,
+        queue: 'General Support',
+        topic: 'Inbound Voice Call',
+        last_message: 'Call in progress',
+        last_message_time: openedAt,
+        start_time: openedAt,
+        ai_confidence: 0.85,
+        escalation_risk: false,
+        source: 'banking',
+        industry: 'banking',
         provider,
         provider_conversation_id: callSid,
-        status: 'open',
-        bank_customer_id: null,
-        opened_at: openedAt,
-        assigned_queue: 'General Support',
-        priority: 'medium',
-        topic: 'Inbound Voice Call',
-        sentiment: 'neutral',
-        updated_at: openedAt,
-        assigned_agent_id: DEFAULT_AGENT_ID,
+        handling_mode: 'ai',
+        handover_required: false,
       })
       .select('id')
       .single();

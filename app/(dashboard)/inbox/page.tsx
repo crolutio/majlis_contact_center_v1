@@ -213,17 +213,6 @@ export default function InboxPage() {
           fetchConversations()
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'cc_conversations',
-        },
-        () => {
-          fetchConversations()
-        }
-      )
       .subscribe()
 
     return () => {

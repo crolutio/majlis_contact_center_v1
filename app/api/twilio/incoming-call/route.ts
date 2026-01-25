@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Call stored and conversation created:', callSid);
 
-    // Step 9: Also create/find cc_conversations row (banking-grade voice)
+    // Step 9: Also create/find conversation row (banking-grade voice)
     try {
       const { createBankingConversationFromVoiceCall, writeAuditLog } = await import('@/lib/banking-store');
       const ccResult = await createBankingConversationFromVoiceCall({
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       // Twilio will open a WebSocket to Vapi. Vapi must be configured to accept the stream.
       // If you need to pass metadata, Vapi typically supports reading query params or stream parameters.
       // This repo currently uses Vapi metadata in webhook processing to map transcripts back to Twilio CallSid.
-      // Attach call identifiers so we can map Vapi → Twilio → cc_conversations reliably.
+      // Attach call identifiers so we can map Vapi → Twilio → conversations reliably.
       const streamUrl = new URL(vapiTwilioStreamUrl);
       // Vapi needs these to select the assistant/phone number configuration.
       // (Even if Vapi also infers via other metadata, passing explicitly is safest.)

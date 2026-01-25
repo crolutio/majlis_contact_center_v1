@@ -184,8 +184,8 @@ export async function POST(request: NextRequest) {
     if (identityResult.status === 'resolved_verified') {
       const { supabase } = await import('@/lib/supabase');
       await supabase
-        .from('cc_conversations')
-        .update({ bank_customer_id: identityResult.bankCustomerId })
+        .from('conversations')
+        .update({ customer_id: identityResult.bankCustomerId })
         .eq('id', conversationId);
     }
 

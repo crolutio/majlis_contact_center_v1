@@ -16,32 +16,20 @@ export async function POST(
       return NextResponse.json({ error: "Conversation ID required" }, { status: 400 })
     }
 
-    // Update unified conversations table
+    // Update conversations table
     const { error: convError } = await supabaseServer
       .from("conversations")
       .update({
         status: "escalated",
         escalation_risk: true,
         priority: "high",
+        handling_mode: "human",
+        handover_required: true,
       })
       .eq("id", id)
 
     if (convError) {
       return NextResponse.json({ error: convError.message }, { status: 500 })
-    }
-
-    // Update banking conversations table if exists
-    const { error: ccError } = await supabaseServer
-      .from("cc_conversations")
-      .update({
-        status: "escalated",
-        priority: "high",
-      })
-      .eq("id", id)
-
-    if (ccError) {
-      // Do not fail escalation if cc_conversations doesn't have the row
-      console.warn("[escalate] cc_conversations update failed:", ccError.message)
     }
 
     return NextResponse.json({ success: true })

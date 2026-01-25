@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllConversations } from '@/lib/store-adapter';
-import { getAllBankingConversations } from '@/lib/banking-store';
 import { getConversationsByIndustry, type Industry } from '@/lib/sample-data';
 
 /**
@@ -23,12 +22,6 @@ export async function GET(request: NextRequest) {
     // If industry is null/undefined, get all conversations (including those without industry)
     const storedConversations = await getAllConversations(industry || undefined);
 
-    // For banking, also pull cc_conversations to ensure escalations show immediately
-    let bankingConversations: any[] = [];
-    if (industry === 'banking') {
-      bankingConversations = await getAllBankingConversations();
-    }
-
     // If using Supabase, we already have the data from database (including demo data seeded)
     // If using in-memory, merge with demo data
     let conversations = storedConversations;
@@ -48,7 +41,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let allConversations = [...conversations, ...bankingConversations];
+    let allConversations = [...conversations];
 
     // Dedupe by id when combining sources
     const seen = new Set<string>();

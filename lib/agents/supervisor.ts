@@ -193,14 +193,14 @@ async function loadContext(state: SupervisorState): Promise<Partial<SupervisorSt
     // Get recent messages (last 10)
     const recentMessages = allMessages.slice(-10);
 
-    // Load canonical bank_customer_id from cc_conversations (do NOT rely on the mapped UI conversation shape)
+    // Load canonical customer_id from conversations (do NOT rely on mapped UI shape)
     const { data: convRow } = await supabaseServer
-      .from("cc_conversations")
-      .select("bank_customer_id")
+      .from("conversations")
+      .select("customer_id")
       .eq("id", state.conversation_id)
       .maybeSingle();
 
-    const conversationBankCustomerId: string | null = convRow?.bank_customer_id ?? null;
+    const conversationBankCustomerId: string | null = convRow?.customer_id ?? null;
 
     // Load conversation-scoped auth_level from cc_auth_sessions
     const authLevel = await getConversationAuthLevel(state.conversation_id);
@@ -323,7 +323,7 @@ async function resolveIdentityNode(state: SupervisorState): Promise<Partial<Supe
         ? "ambiguous"
         : "unresolved";
 
-    // Prefer identity-resolution result, otherwise fall back to cc_conversations.bank_customer_id (from load_context)
+    // Prefer identity-resolution result, otherwise fall back to conversations.customer_id (from load_context)
     const bankCustomerId =
       (identityResult.status === "resolved_verified" || identityResult.status === "resolved_unverified"
         ? identityResult.bankCustomerId || null
@@ -544,11 +544,11 @@ async function handleOtp(state: SupervisorState): Promise<Partial<SupervisorStat
               .eq("channel", state.channel)
               .eq("address", state.from_address);
 
-            // Update conversation with bank_customer_id
+            // Update conversation with customer_id
             await supabaseServer
-              .from("cc_conversations")
+              .from("conversations")
               .update({
-                bank_customer_id: state.bank_customer_id,
+                customer_id: state.bank_customer_id,
                 updated_at: new Date().toISOString(),
               })
               .eq("id", state.conversation_id);
@@ -1634,6 +1634,7 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
     const toAddress = inboundFrom;
     const fromAddress = inboundTo;
 
+    const sentAt = new Date().toISOString();
     const { data: messageData, error: insertError } = await supabaseServer
       .from("cc_messages")
       .insert({
@@ -1656,12 +1657,44 @@ async function persistAndSend(state: SupervisorState): Promise<Partial<Superviso
           case_id: state.case_id,
         },
         status: "sent",
-        created_at: new Date().toISOString(),
+        created_at: sentAt,
       })
       .select("id")
       .single();
 
     if (insertError) throw insertError;
+
+    await supabaseServer.from("messages").insert({
+      conversation_id: state.conversation_id,
+      sender_type: "agent",
+      content: state.formatted_response,
+      created_at: sentAt,
+      source: "banking",
+      channel: state.channel,
+      provider: providerForSend,
+      provider_message_id: outboundProviderMessageId,
+      from_address: fromAddress,
+      to_address: toAddress,
+      status: "sent",
+      metadata: {
+        content_hash: contentHash,
+        in_reply_to_message_id: state.message_id,
+        intent: state.intent,
+        disposition_code: state.disposition_code,
+        voice_provider_call_id: state.voice_provider_call_id,
+        pending_action: state.pending_action,
+        case_id: state.case_id,
+      },
+    });
+
+    await supabaseServer
+      .from("conversations")
+      .update({
+        last_message: state.formatted_response,
+        last_message_time: sentAt,
+        updated_at: sentAt,
+      })
+      .eq("id", state.conversation_id);
 
     if (state.channel === "whatsapp") {
       // Send via Twilio (WhatsApp)
@@ -1798,12 +1831,17 @@ async function wrapUp(state: SupervisorState): Promise<Partial<SupervisorState>>
 
     // Update conversation status (keep it open)
     await supabaseServer
-      .from("cc_conversations")
+      .from("conversations")
       .update({
-        status: "open",
         updated_at: new Date().toISOString(),
       })
       .eq("id", state.conversation_id);
+
+    await supabaseServer
+      .from("conversations")
+      .update({ status: "active" })
+      .eq("id", state.conversation_id)
+      .neq("status", "escalated");
 
     // Audit
     await auditLog(

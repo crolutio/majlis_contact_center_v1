@@ -26,17 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ agents: [] })
     }
 
-    // Get conversations assigned to agents (from both tables)
+    // Get conversations assigned to agents
     const { data: conversations, error: convError } = await supabaseServer
       .from("conversations")
       .select("id, assigned_to, status, priority, sentiment, sentiment_score, start_time, last_message_time, channel")
       .not("assigned_to", "is", null)
-
-    // Also get from cc_conversations
-    const { data: ccConversations, error: ccConvError } = await supabaseServer
-      .from("cc_conversations")
-      .select("id, assigned_agent_id, status, priority, sentiment, opened_at, channel")
-      .not("assigned_agent_id", "is", null)
 
     // Get call analysis data for quality scores
     const { data: callAnalysis, error: analysisError } = await supabaseServer
@@ -48,15 +42,23 @@ export async function GET(request: NextRequest) {
       .from("calls")
       .select("agent_id, duration, start_time, end_time, sentiment, sentiment_score")
 
+    if (convError || analysisError || callsError) {
+      const message =
+        convError?.message || analysisError?.message || callsError?.message || "Failed to load metrics"
+      console.error("[agents/performance] Failed to fetch metrics:", {
+        convError,
+        analysisError,
+        callsError,
+      })
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+
     // Calculate performance metrics for each agent
     const agentPerformance = agents.map((agent) => {
       const agentId = agent.id
 
       // Get conversations for this agent (from both tables)
-      const agentConversations = [
-        ...(conversations || []).filter((c) => c.assigned_to === agentId),
-        ...(ccConversations || []).filter((c) => c.assigned_agent_id === agentId),
-      ]
+      const agentConversations = (conversations || []).filter((c) => c.assigned_to === agentId)
 
       // Get calls for this agent
       const agentCalls = (calls || []).filter((c) => c.agent_id === agentId)

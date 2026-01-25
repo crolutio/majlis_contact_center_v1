@@ -14,7 +14,7 @@ export async function GET() {
       latestMsgRes,
       latestConvRes,
     ] = await Promise.all([
-      supabaseServer.from('cc_conversations').select('id', { count: 'exact', head: true }),
+      supabaseServer.from('conversations').select('id', { count: 'exact', head: true }),
       supabaseServer.from('cc_messages').select('id', { count: 'exact', head: true }),
       supabaseServer.from('cc_identity_links').select('id', { count: 'exact', head: true }),
       supabaseServer
@@ -23,9 +23,9 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(3),
       supabaseServer
-        .from('cc_conversations')
-        .select('id, channel, provider, provider_conversation_id, opened_at')
-        .order('opened_at', { ascending: false })
+        .from('conversations')
+        .select('id, channel, provider, provider_conversation_id, start_time')
+        .order('start_time', { ascending: false })
         .limit(3),
     ]);
 
@@ -55,7 +55,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       counts: {
-        cc_conversations: conversationsRes.count ?? null,
+        conversations: conversationsRes.count ?? null,
         cc_messages: messagesRes.count ?? null,
         cc_identity_links: identityLinksRes.count ?? null,
       },
