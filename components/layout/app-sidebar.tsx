@@ -141,10 +141,10 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center border-b border-sidebar-border">
-        <div className="flex items-center w-full">
+        <div className="flex items-center w-full gap-2 pr-2">
           <Link
             href={user.role === "admin" ? "/agent-builder" : user.role === "agent" ? "/chat-agent" : user.role === "call_agent" ? "/call-agent" : user.role === "back_office" ? "/back-office" : "/inbox"}
-            className="flex items-center min-w-0"
+            className="flex items-center min-w-0 flex-1"
           >
             <div className="w-[84px] flex items-center justify-center flex-shrink-0">
               <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
@@ -153,7 +153,7 @@ export function AppSidebar() {
             </div>
             <span
               className={cn(
-                "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap",
+                "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap truncate pr-2",
                 effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
               )}
             >
@@ -162,7 +162,7 @@ export function AppSidebar() {
           </Link>
           <div
             className={cn(
-              "ml-auto pr-4 transition-all duration-200 ease-in-out overflow-hidden",
+              "ml-auto flex-shrink-0 transition-all duration-200 ease-in-out overflow-hidden",
               effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
             )}
           >
@@ -193,7 +193,7 @@ export function AppSidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "mx-2 flex items-center w-full py-2.5 px-2 rounded-lg text-sm font-medium transition-colors duration-200 overflow-hidden min-w-0",
+                "mx-1 flex items-center w-full py-2.5 px-1 rounded-lg text-sm font-medium transition-colors duration-200 overflow-hidden min-w-0",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
@@ -226,12 +226,12 @@ export function AppSidebar() {
       </nav>
 
       {/* User Menu */}
-      <div className="px-2 py-3 border-t border-sidebar-border">
+      <div className="px-1 py-3 border-t border-sidebar-border">
         <DropdownMenu open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                "mx-2 w-full flex items-center py-2 px-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors duration-200 overflow-hidden min-w-0"
+                "mx-1 w-full flex items-center py-2 px-1 rounded-lg hover:bg-sidebar-accent/50 transition-colors duration-200 overflow-hidden min-w-0"
               )}
             >
               <div className="w-[84px] flex items-center justify-center flex-shrink-0">

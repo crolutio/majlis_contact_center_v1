@@ -232,21 +232,51 @@ export async function getConversationMessages(
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
+    if (!error && messages && messages.length > 0) {
+      // Transform messages to DbMessage format
+      const dbMessages: DbMessage[] = (messages || []).map((msg: any) => ({
+        id: msg.id,
+        conversation_id: msg.conversation_id,
+        sender_type: (msg.sender_type || msg.type || 'customer') as 'customer' | 'agent' | 'ai' | 'system',
+        content: msg.content || '',
+        created_at: msg.created_at || msg.timestamp,
+        is_internal: msg.is_internal || msg.metadata?.is_internal || false,
+        metadata: msg.metadata || msg.payload || {},
+      }));
+
+      return dbMessages;
+    }
+
     if (error) {
       console.error('Error fetching messages:', error);
+    }
+
+    // Fallback: read from cc_messages when core messages are missing
+    const { data: ccMessages, error: ccError } = await supabase
+      .from('cc_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (ccError) {
+      console.error('Error fetching cc_messages:', ccError);
       console.log('Using fallback mock messages for conversation:', conversationId);
       return getMockConversationMessages(conversationId);
     }
 
-    // Transform messages to DbMessage format
-    const dbMessages: DbMessage[] = (messages || []).map((msg: any) => ({
+    const dbMessages: DbMessage[] = (ccMessages || []).map((msg: any) => ({
       id: msg.id,
       conversation_id: msg.conversation_id,
-      sender_type: (msg.sender_type || msg.type || 'customer') as 'customer' | 'agent' | 'ai' | 'system',
-      content: msg.content || '',
-      created_at: msg.created_at || msg.timestamp,
-      is_internal: msg.is_internal || msg.metadata?.is_internal || false,
-      metadata: msg.metadata || msg.payload || {},
+      sender_type: (msg.direction === 'inbound' ? 'customer' : 'agent') as 'customer' | 'agent' | 'ai' | 'system',
+      content: msg.body_text || '',
+      created_at: msg.created_at || msg.metadata?.created_at || msg.metadata?.timestamp,
+      is_internal: false,
+      metadata: {
+        ...(msg.metadata || {}),
+        sourceTable: 'cc_messages',
+        provider: msg.provider,
+        channel: msg.channel,
+      },
     }));
 
     return dbMessages;

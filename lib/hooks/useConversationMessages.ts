@@ -28,11 +28,13 @@ export function useConversationMessages({
   const [messages, setMessages] = useState<DbMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useCcMessages, setUseCcMessages] = useState(false);
 
   // Load messages when conversation changes
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
+      setUseCcMessages(false);
       return;
     }
 
@@ -43,6 +45,7 @@ export function useConversationMessages({
       try {
         const msgs = await getConversationMessages(conversationId, source);
         setMessages(msgs);
+        setUseCcMessages(msgs.some((msg) => msg.metadata?.sourceTable === 'cc_messages'));
       } catch (err) {
         console.error('Error loading messages:', err);
         setError('Failed to load messages');
@@ -57,6 +60,13 @@ export function useConversationMessages({
   // Set up real-time subscription for new messages
   useEffect(() => {
     if (!conversationId) return;
+
+    const appendMessage = (newMessage: DbMessage) => {
+      setMessages(prev => {
+        if (prev.some(msg => msg.id === newMessage.id)) return prev;
+        return [...prev, newMessage];
+      });
+    };
 
     const realtimeChannel = supabase
       .channel(`messages:${conversationId}`)
@@ -79,15 +89,51 @@ export function useConversationMessages({
             metadata: payload.new.metadata || payload.new.payload || {},
           };
 
-          setMessages(prev => [...prev, newMessage]);
+          appendMessage(newMessage);
         }
       )
       .subscribe();
 
+    const ccMessagesChannel = useCcMessages
+      ? supabase
+          .channel(`cc_messages:${conversationId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'cc_messages',
+              filter: `conversation_id=eq.${conversationId}`,
+            },
+            (payload) => {
+              const newMessage: DbMessage = {
+                id: payload.new.id,
+                conversation_id: payload.new.conversation_id,
+                sender_type: payload.new.direction === 'inbound' ? 'customer' : 'agent',
+                content: payload.new.body_text || '',
+                created_at: payload.new.created_at,
+                is_internal: false,
+                metadata: {
+                  ...(payload.new.metadata || {}),
+                  sourceTable: 'cc_messages',
+                  provider: payload.new.provider,
+                  channel: payload.new.channel,
+                },
+              };
+
+              appendMessage(newMessage);
+            }
+          )
+          .subscribe()
+      : null;
+
     return () => {
       supabase.removeChannel(realtimeChannel);
+      if (ccMessagesChannel) {
+        supabase.removeChannel(ccMessagesChannel);
+      }
     };
-  }, [conversationId, source]);
+  }, [conversationId, source, useCcMessages]);
 
   // Send message function
   const send = useCallback(async (content: string, isInternal: boolean = false) => {
