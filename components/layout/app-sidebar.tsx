@@ -262,7 +262,8 @@ export function AppSidebar() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            align={effectiveCollapsed ? "center" : "end"}
+            align={effectiveCollapsed ? "start" : "end"}
+            alignOffset={effectiveCollapsed ? 10 : 0}
             className="w-56"
             side="top"
             sideOffset={12}
