@@ -141,24 +141,34 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center border-b border-sidebar-border">
-        <div className="flex items-center w-full gap-1 pr-2">
+        <div className="flex items-center w-full pr-2">
           <Link
             href={user.role === "admin" ? "/agent-builder" : user.role === "agent" ? "/chat-agent" : user.role === "call_agent" ? "/call-agent" : user.role === "back_office" ? "/back-office" : "/inbox"}
-            className="flex items-center min-w-0 flex-1"
+            className="flex flex-col items-center min-w-0 flex-1 py-1"
           >
             <div className="w-[84px] flex items-center justify-center flex-shrink-0">
               <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
                 <MajlisConnectLogo className="w-5 h-5 text-sidebar-primary-foreground" />
               </div>
             </div>
-            <span
-              className={cn(
-                "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap truncate pr-2",
-                effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-              )}
-            >
-              Majlis Connect
-            </span>
+            <div className="flex flex-col items-center text-center mt-1">
+              <span
+                className={cn(
+                  "font-semibold text-sm transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap truncate",
+                  effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                )}
+              >
+                Majlis
+              </span>
+              <span
+                className={cn(
+                  "font-semibold text-sm transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap truncate",
+                  effectiveCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                )}
+              >
+                Connect
+              </span>
+            </div>
           </Link>
           <div
             className={cn(
@@ -257,13 +267,13 @@ export function AppSidebar() {
                     {roleLabels[user.role]}
                   </Badge>
                 </div>
-                <ChevronDown className="w-4 h-4 text-sidebar-foreground/50 transition-opacity duration-150" />
+                <ChevronDown className={cn("w-4 h-4 text-sidebar-foreground/50 transition-transform duration-200", isUserMenuOpen ? "rotate-180" : "rotate-0")} />
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            align={effectiveCollapsed ? "start" : "end"}
-            alignOffset={effectiveCollapsed ? 10 : 0}
+            align="center"
+            alignOffset={0}
             className="w-56"
             side="top"
             sideOffset={12}

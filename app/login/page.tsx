@@ -15,7 +15,6 @@ import { MajlisConnectLogo } from "@/components/brand/majlis-connect-logo"
 
 const roleLabels: Record<UserRole, string> = {
   agent: "Human Desktop",
-  call_agent: "Call Agent",
   supervisor: "Supervisor",
   admin: "Agent Builder",
   analyst: "Analyst",
@@ -26,10 +25,6 @@ const roleInfo: Record<UserRole, { icon: React.ElementType; description: string 
   agent: {
     icon: Headphones,
     description: "Handle conversations and customer requests",
-  },
-  call_agent: {
-    icon: PhoneCall,
-    description: "Handle inbound & outbound voice calls",
   },
   supervisor: {
     icon: Users,
