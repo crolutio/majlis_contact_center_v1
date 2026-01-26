@@ -146,12 +146,12 @@ export function AppSidebar() {
             href={user.role === "admin" ? "/agent-builder" : user.role === "agent" ? "/chat-agent" : user.role === "call_agent" ? "/call-agent" : user.role === "back_office" ? "/back-office" : "/inbox"}
             className="flex items-center min-w-0 flex-1"
           >
-            <div className="w-[84px] flex items-center justify-center flex-shrink-0">
+            <div className="w-[84px] flex items-center justify-center flex-shrink-0 py-6">
               <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
                 <MajlisConnectLogo className="w-6 h-6 text-sidebar-primary-foreground" />
               </div>
             </div>
-            <div className="flex flex-col items-start text-left py-6">
+            <div className="flex flex-col items-start text-left">
               <span
                 className={cn(
                   "font-semibold text-lg transition-all duration-200 ease-in-out overflow-hidden whitespace-nowrap truncate pr-2",
