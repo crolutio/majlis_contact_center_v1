@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 export type UserRole = "agent" | "call_agent" | "supervisor" | "admin" | "analyst" | "back_office"
 
@@ -22,6 +22,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AUTH_STORAGE_KEY = "majlis-auth-user"
 
 const demoUsers: Record<UserRole, User> = {
   agent: {
@@ -77,18 +78,43 @@ const demoUsers: Record<UserRole, User> = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const stored = window.localStorage.getItem(AUTH_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as User
+        setUser(parsed)
+      }
+    } catch (error) {
+      console.warn("Failed to restore user session:", error)
+      window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    }
+  }, [])
+
   const login = async (email: string, password: string, role: UserRole = "agent") => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 500))
-    setUser(demoUsers[role])
+    const nextUser = demoUsers[role]
+    setUser(nextUser)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+    }
   }
 
   const logout = () => {
     setUser(null)
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    }
   }
 
   const switchRole = (role: UserRole) => {
-    setUser(demoUsers[role])
+    const nextUser = demoUsers[role]
+    setUser(nextUser)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+    }
   }
 
   return (

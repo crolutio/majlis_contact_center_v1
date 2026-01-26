@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,8 +54,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("demo123")
   const [selectedRole, setSelectedRole] = useState<UserRole>("agent")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/chat-agent")
+    }
+  }, [isAuthenticated, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
